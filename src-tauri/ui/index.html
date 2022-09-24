@@ -1,18 +1,36 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
-    Hello world!
+<html>
 
-    <iframe src="https://example.localhost/test"></iframe>
-    <iframe src="https://example.local/test"></iframe>
-    <iframe src="https://example2.localhost/test"></iframe>
-    <iframe src="https://example/test"></iframe>
-    <iframe src="example://localhost/test"></iframe>
+<head>
+    <!-- UnityLoader-v3.js -->
+    <script src="https://bulletforce.localhost/$$loader$$.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        #gameContainer {
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="gameContainer"></div>
+
+    <script>
+        // handle poki integration
+        window.initPokiBridge = () => {};
+
+        const url = "https://bulletforce.localhost/Build/$$game$$.json";
+        window.gameInstance = UnityLoader.instantiate("gameContainer", url, {
+            // onProgress: UnityLoader.Progress
+            // onsuccess: function() {},
+            // onerror: function() {},
+        });
+        console.log(window.gameInstance);
+        // debugger;
+    </script>
 </body>
+
 </html>
