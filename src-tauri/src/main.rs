@@ -4,6 +4,7 @@
 )]
 
 mod version_manager;
+mod webrequest_proxy;
 
 use std::path::Path;
 
@@ -43,17 +44,15 @@ fn bulletforce_handler(
         .body(content)
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // version manager init
     let version_manager = VersionManager::new(Path::new("bfhax_data")).unwrap();
 
     let version_info = match version_manager.version() {
         Some(x) => x,
         None => match version_manager.show_version_downloader_blocking().unwrap() {
-            Some(x) => {
-                // x.
-                x
-            }
+            Some(x) => x,
             None => return,
         },
     };
@@ -61,8 +60,15 @@ fn main() {
     _ = GAME_VERSION.set(version_info);
     println!("Set game version global");
 
-    // TODO: create websocket proxy server!
+    // set up web proxy
+    tokio::spawn(async move {
+        webrequest_proxy::block_on_server().await;
+    });
 
+    // TODO: set up web socket proxy
+
+    // create tauri app and block on it
+    // when the tauri app closes, exit from main
     tauri::Builder::default()
         .setup(|_app| {
             // app.wry_plugin(tauri_egui::EguiPluginBuilder::new(app.handle()));
@@ -72,7 +78,6 @@ fn main() {
             _app.get_window("main").unwrap().open_devtools();
             Ok(())
         })
-        // .register_uri_scheme_protocol("bulletforce", move |h, r| bulletforce_handler(h, r))
         .register_uri_scheme_protocol("bulletforce", bulletforce_handler)
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
