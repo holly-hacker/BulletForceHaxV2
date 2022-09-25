@@ -1,41 +1,23 @@
 <html>
 
 <head>
-    <!-- UnityLoader-v3.js -->
     <script src="https://bulletforce.localhost/$$loader$$.js"></script>
-
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-        }
-
-        #gameContainer {
-            margin: 0;
-        }
-    </style>
 </head>
 
-<body>
+<body style="margin:0">
     <div id="gameContainer"></div>
 
     <script>
         // handle poki integration
         window.initPokiBridge = (n) => {
-            console.log("initPokiBridge", n);
-            window.gameInstance.SendMessage(n, "ready")
+            console.log("initPokiBridge called!", n);
+            window.gameInstance.SendMessage(n, "ready");
         };
         window.commercialBreak = function (n) {
             console.log("commercialBreak called!", arguments);
             window.gameInstance.SendMessage(n, "commercialBreakCompleted");
         };
         window.midrollSurprise = function () { console.log("midrollSurprise called!", arguments) };
-        window.PokiSDK = {
-            customEvent: function () { console.log("customEvent", arguments) },
-            destroyAd: function () { console.log("destroyAd", arguments) },
-            displayAd: function () { console.log("displayAd", arguments) },
-            gameInteractive: function () { console.log("gameInteractive", arguments) },
-        }
 
         function ptr_to_str(ptr) {
             return window.gameInstance.Module.ccall("$fake_ccall$", "string", ["number"], [ptr]);
@@ -47,12 +29,11 @@
 
         function processWasmImports(imports) {
             let env = imports.env;
+
             env["_JS_Eval_EvalJS"] = (arg) => { console.log("EVAL JS", ptr_to_str(arg)) };
 
-            // nop various calls
+            // nop various poki api calls
             let allowed_pokisdk_calls = ["_JS_PokiSDK_commercialBreak", "_JS_PokiSDK_initPokiBridge"];
-
-            // disable all poki sdk calls except for whitelisted ones
             for (let key in env) {
                 if (env.hasOwnProperty(key) && typeof env[key] == "function") {
                     if (!key.startsWith("_JS_PokiSDK_")) continue;
@@ -77,9 +58,6 @@
                 console.log("_JS_WebRequest_Create", ptr_to_str(url), ptr_to_str(method), ret);
                 return ret;
             }
-
-            // facilitate conversion functions, such as string to pointer
-            // window.gameInstance.Module["_$fake_ccall$"] = (arg) => arg;
         }
 
         let orig_instantiate = WebAssembly.instantiate;
@@ -99,14 +77,9 @@
 
         const url = "https://bulletforce.localhost/Build/$$game$$.json";
         window.gameInstance = UnityLoader.instantiate("gameContainer", url, {
-            // onsuccess: function() {},
-            // onerror: function() {},
-            Module: {
-                "_$fake_ccall$": (x) => x,
-            },
+            Module: { "_$fake_ccall$": (x) => x, },
         });
-        console.log(window.gameInstance);
-        // debugger;
+        console.log("Game instance", window.gameInstance);
     </script>
 </body>
 

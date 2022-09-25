@@ -57,8 +57,11 @@ async fn main() {
         },
     };
 
-    _ = GAME_VERSION.set(version_info);
-    println!("Set game version global");
+    GAME_VERSION
+        .set(version_info)
+        .ok()
+        .expect("set version info global");
+    println!("Initialized game version global");
 
     // set up web proxy
     tokio::spawn(async move {
