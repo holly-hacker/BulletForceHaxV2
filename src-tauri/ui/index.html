@@ -21,12 +21,61 @@
     <script>
         // handle poki integration
         window.initPokiBridge = () => {};
+        window.midrollSurprise = () => {};
+
+        function ptr_to_str(ptr) {
+            return window.gameInstance.Module.ccall("$fake_ccall$", "string", ["number"], [ptr]);
+        }
+
+        function str_to_ptr(str) {
+            return window.gameInstance.Module.ccall("$fake_ccall$", "number", ["string"], [str]);
+        }
+
+        function processWasmImports(imports) {
+            let env = imports.env;
+            env["_JS_PokiSDK_preInit"] = () => {console.log("prevent ad check, poggers")};
+            // env["_JS_Eval_EvalJS"] = (arg) => {console.log("EVAL JS", ptr_to_str(arg))}
+
+            // test
+            let orig_socketCreate = env["_SocketCreate"];
+            env["_SocketCreate"] = function(url, protocols) {
+                let ret = orig_socketCreate(...arguments);
+                console.log("_SocketCreate", ptr_to_str(url), ptr_to_str(protocols), ret);
+                return ret;
+            }
+            let orig_webRequestCreate = env["_JS_WebRequest_Create"];
+            env["_JS_WebRequest_Create"] = function(url, method) {
+                let ret = orig_webRequestCreate(...arguments);
+                console.log("_JS_WebRequest_Create", ptr_to_str(url), ptr_to_str(method), ret);
+                return ret;
+            }
+
+            // facilitate conversion functions, such as string to pointer
+            // window.gameInstance.Module["_$fake_ccall$"] = (arg) => arg;
+        }
+
+        let orig_instantiate = WebAssembly.instantiate;
+        WebAssembly.instantiate = function(source, importObject) {
+            console.log("instantiating wasm object", importObject);
+            processWasmImports(importObject);
+            return orig_instantiate(source, importObject);
+        }
+
+        let orig_instantiateStreaming = WebAssembly.instantiateStreaming;
+        WebAssembly.instantiateStreaming = function(source, importObject) {
+            console.log("instantiateStreaming wasm object", importObject);
+            processWasmImports(importObject);
+            return orig_instantiateStreaming(source, importObject);
+        }
+
 
         const url = "https://bulletforce.localhost/Build/$$game$$.json";
         window.gameInstance = UnityLoader.instantiate("gameContainer", url, {
-            // onProgress: UnityLoader.Progress
             // onsuccess: function() {},
             // onerror: function() {},
+            Module: {
+                "_$fake_ccall$": (x) => x,
+            },
         });
         console.log(window.gameInstance);
         // debugger;
