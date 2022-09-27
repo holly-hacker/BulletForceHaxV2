@@ -14,6 +14,8 @@ use tauri::{
     http::{Request, Response, ResponseBuilder},
     AppHandle, Manager,
 };
+use tracing::{debug, info};
+use tracing_subscriber::prelude::*;
 use version_manager::{VersionConfig, VersionManager};
 
 static GAME_VERSION: OnceCell<VersionConfig> = OnceCell::new();
@@ -28,7 +30,7 @@ fn bulletforce_handler(
         path = &path["localhost/".len()..];
     }
 
-    println!("protocol req: {}", path);
+    debug!("protocol req: {}", path);
 
     let version = GAME_VERSION.get().unwrap();
     let path = match path {
@@ -47,6 +49,25 @@ fn bulletforce_handler(
 
 #[tokio::main]
 async fn main() {
+    // initialize logging
+    let subscriber = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .with_timer(tracing_subscriber::fmt::time::uptime())
+        .finish();
+
+    let filter =
+        tracing_subscriber::filter::Targets::new().with_target("app", tracing::Level::DEBUG);
+
+    subscriber.with(filter).init();
+
+    {
+        tracing::trace!("trace enabled");
+        tracing::debug!("debug enabled");
+        tracing::info!("info enabled");
+        tracing::warn!("warn enabled");
+        tracing::error!("error enabled");
+    }
+
     // version manager init
     let version_manager = VersionManager::new(Path::new("bfhax_data")).unwrap();
 
@@ -62,7 +83,7 @@ async fn main() {
         .set(version_info)
         .ok()
         .expect("set version info global");
-    println!("Initialized game version global");
+    info!("Initialized game version global");
 
     // set up web proxy
     tokio::spawn(async move {

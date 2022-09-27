@@ -8,6 +8,7 @@ use tauri_egui::{
     eframe::App,
     egui::{self, Color32, ProgressBar, RichText},
 };
+use tracing::{debug, info};
 
 use super::scraper;
 
@@ -50,7 +51,7 @@ impl DownloaderDialog {
     pub fn show_dialog() -> Result<Vec<DownloadedFile>> {
         let (dialog, rx) = Self::new();
 
-        println!("frame starting");
+        debug!("dialog starting");
         tauri_egui::eframe::run_native(
             "Version Downloader",
             tauri_egui::eframe::NativeOptions {
@@ -60,10 +61,10 @@ impl DownloaderDialog {
             Box::new(|_| Box::new(dialog)),
         );
 
-        println!("frame done");
+        debug!("dialog done");
 
         let recv = rx.try_recv()?;
-        println!("frame response has len {}", recv.len());
+        debug!("dialog response has len {}", recv.len());
 
         Ok(recv)
     }
@@ -131,7 +132,7 @@ impl App for DownloaderDialog {
                     });
                 }
                 scraper::ProgressReport::Done => {
-                    println!("Finished downloading all files, closing dialog");
+                    info!("Finished downloading all files, closing dialog");
                     self.tx.send(self.files.clone()).unwrap();
                     frame.close()
                 }

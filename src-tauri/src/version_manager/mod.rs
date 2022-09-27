@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
+use tracing::info;
 
 use self::downloader_dialog::DownloaderDialog;
 
@@ -40,7 +41,7 @@ impl VersionManager {
 
         if let Some(downloaded_files) = downloaded_files {
             for file in downloaded_files {
-                println!("writing file {}", file.name);
+                info!("Downloaded file {}", file.name);
                 let path = self.path.join(&file.name);
                 if let Some(parent) = path.parent() {
                     std::fs::create_dir_all(parent)?;

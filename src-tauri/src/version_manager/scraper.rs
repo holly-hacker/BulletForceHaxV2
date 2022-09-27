@@ -1,6 +1,7 @@
 use std::sync::mpsc::{channel, Receiver, Sender};
 
 use anyhow::{anyhow, Context, Result};
+use tracing::debug;
 
 const UNITY_LOADER_URL: &str = "https://files.crazygames.com/unityloaders/UnityLoader-v3.js";
 
@@ -152,6 +153,6 @@ fn download_file_with_progress(
         }
     }
 
-    println!("Downloaded {name} from {url}");
+    debug!("Downloaded {name} from {url}");
     Ok(())
 }

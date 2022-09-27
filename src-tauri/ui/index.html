@@ -23,6 +23,7 @@
             return window.gameInstance.Module.ccall("$fake_ccall$", "string", ["number"], [ptr]);
         }
 
+        // NOTE: you can only allocate a single string per hook
         function str_to_ptr(str) {
             return window.gameInstance.Module.ccall("$fake_ccall$", "number", ["string"], [str]);
         }
@@ -79,7 +80,7 @@
 
         const url = "https://bulletforce.localhost/Build/$$game$$.json";
         window.gameInstance = UnityLoader.instantiate("gameContainer", url, {
-            Module: { "_$fake_ccall$": (x) => x, },
+            Module: { "_$fake_ccall$": x => x, },
         });
         console.log("Game instance", window.gameInstance);
     </script>

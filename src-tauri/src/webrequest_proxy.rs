@@ -9,6 +9,7 @@ use tower::{Service, ServiceBuilder, ServiceExt};
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::decompression::DecompressionLayer;
+use tracing::{debug, error, info, trace, warn};
 
 pub async fn block_on_server() {
     let addr = SocketAddr::from(([127, 0, 0, 1], 48897));
@@ -20,22 +21,23 @@ pub async fn block_on_server() {
 
     let server = Server::bind(&addr).serve(Shared::new(service));
 
-    println!("http server created");
+    debug!("http server created");
     if let Err(e) = server.await {
-        eprintln!("server error: {}", e);
+        error!("server error: {}", e);
     }
 }
 
+#[tracing::instrument(name = "WebRequestProxy", level = "info", skip_all, fields(uri = req.uri().query().unwrap_or("")))]
 async fn hello_world_service(
     req: Request<Body>,
 ) -> Result<Response<Body>, Box<dyn std::error::Error + Send + Sync>> {
-    println!("Received web request {} {}", req.method(), req.uri());
+    trace!("Received web request {} {}", req.method(), req.uri());
     let (parts_req, body) = req.into_parts();
 
     let proxied_uri = match parts_req.uri.query() {
         Some(x) => x,
         None => {
-            println!("Received request did not have query string");
+            warn!("Received request did not have query string");
             return Ok(Response::new("No uri found in query string".into()));
         }
     };
@@ -45,7 +47,7 @@ async fn hello_world_service(
     if proxied_uri.host() == Some("pref-events.cloud.unity3d.com")
         || proxied_uri.host() == Some("cdp.cloud.unity3d.com")
     {
-        println!("Preventing unity logging");
+        debug!("Preventing unity logging");
         return Ok(Response::builder().body("Unity event blocked".into())?);
     }
 
@@ -53,7 +55,7 @@ async fn hello_world_service(
     if matches!(parts_req.method.as_str(), "GET" | "POST") {
         let request_hook_res = request_hook(&proxied_uri, &mut body_bytes);
         if let Err(error) = request_hook_res {
-            println!("Error during request hook: {error}");
+            error!("Error during request hook: {error}");
         }
     }
 
@@ -83,7 +85,7 @@ async fn hello_world_service(
             if matches!(parts_req.method.as_str(), "GET" | "POST") {
                 let request_hook_res = response_hook(&proxied_uri, &mut body_bytes);
                 if let Err(error) = request_hook_res {
-                    println!("Error during request hook: {error}");
+                    error!("Error during request hook: {error}");
                 }
             }
 
@@ -96,7 +98,7 @@ async fn hello_world_service(
             Ok(response.body(body_bytes.into())?)
         }
         Err(error) => {
-            println!("Error during proxied HTTP request: {error}");
+            error!("Error during proxied HTTP request: {error}");
             Ok(Response::builder()
                 .status(500)
                 .body(format!("Error: {error}").into())?)
@@ -112,7 +114,7 @@ fn response_hook(url: &hyper::Uri, bytes: &mut Vec<u8>) -> Result<()> {
     match url.path() {
         "/OnlineAccountSystem/get-promotional-multipliers.php" => {
             *bytes = r#"{"credsMult":2,"xpMult":2}"#.into();
-            println!("Rewrote promotional multiplier");
+            info!("Rewrote promotional multiplier");
         }
         _ => (),
     }
