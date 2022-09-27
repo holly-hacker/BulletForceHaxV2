@@ -47,7 +47,9 @@
             // enable hooks
             let orig_socketCreate = env["_SocketCreate"];
             env["_SocketCreate"] = function (url, protocols) {
-                let ret = orig_socketCreate(...arguments);
+                // NOTE: I can pass the protocol to the proxy as well, that may be useful in the future
+                url = str_to_ptr("ws://localhost:48898/?" + ptr_to_str(url));
+                let ret = orig_socketCreate(url, protocols);
                 console.log("_SocketCreate", ptr_to_str(url), ptr_to_str(protocols), ret);
                 return ret;
             }

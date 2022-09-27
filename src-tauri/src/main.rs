@@ -5,6 +5,7 @@
 
 mod version_manager;
 mod webrequest_proxy;
+mod websocket_proxy;
 
 use std::path::Path;
 
@@ -68,7 +69,10 @@ async fn main() {
         webrequest_proxy::block_on_server().await;
     });
 
-    // TODO: set up web socket proxy
+    // set up web socket proxy
+    tokio::spawn(async move {
+        websocket_proxy::block_on_server().await;
+    });
 
     // create tauri app and block on it
     // when the tauri app closes, exit from main
