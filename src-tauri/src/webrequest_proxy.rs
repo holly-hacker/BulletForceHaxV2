@@ -17,7 +17,7 @@ pub async fn block_on_server() {
     let service = ServiceBuilder::new()
         .layer(CompressionLayer::new())
         .layer(CorsLayer::permissive())
-        .service_fn(hello_world_service);
+        .service_fn(web_request_proxy_service);
 
     let server = Server::bind(&addr).serve(Shared::new(service));
 
@@ -28,7 +28,7 @@ pub async fn block_on_server() {
 }
 
 #[tracing::instrument(name = "WebRequestProxy", level = "info", skip_all, fields(uri = req.uri().query().unwrap_or("")))]
-async fn hello_world_service(
+async fn web_request_proxy_service(
     req: Request<Body>,
 ) -> Result<Response<Body>, Box<dyn std::error::Error + Send + Sync>> {
     trace!("Received web request {} {}", req.method(), req.uri());
