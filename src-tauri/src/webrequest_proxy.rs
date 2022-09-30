@@ -2,10 +2,12 @@ use anyhow::Result;
 use hyper::body::to_bytes;
 use hyper::header::CONTENT_TYPE;
 use hyper::{Body, Client, Request, Response, Server};
+use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use tower::make::Shared;
 use tower::{Service, ServiceBuilder, ServiceExt};
+use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::decompression::DecompressionLayer;
@@ -15,6 +17,7 @@ pub async fn block_on_server() {
     let addr = SocketAddr::from(([127, 0, 0, 1], 48897));
 
     let service = ServiceBuilder::new()
+        .layer(CatchPanicLayer::new())
         .layer(CompressionLayer::new())
         .layer(CorsLayer::permissive())
         .service_fn(web_request_proxy_service);
@@ -28,10 +31,21 @@ pub async fn block_on_server() {
 }
 
 #[tracing::instrument(name = "WebRequestProxy", level = "info", skip_all, fields(uri = req.uri().query().unwrap_or("")))]
-async fn web_request_proxy_service(
-    req: Request<Body>,
-) -> Result<Response<Body>, Box<dyn std::error::Error + Send + Sync>> {
-    trace!("Received web request {} {}", req.method(), req.uri());
+async fn web_request_proxy_service(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    match web_request_proxy(req).await {
+        Ok(r) => Ok(r),
+        Err(e) => {
+            error!("Error result while handling proxied request {e:?}");
+            Ok(Response::builder()
+                .status(500)
+                .body(format!("Error while handling request: {e:?}").into())
+                .expect("should be able to create basic response"))
+        }
+    }
+}
+
+async fn web_request_proxy(req: Request<Body>) -> anyhow::Result<Response<Body>> {
+    debug!("Received {} request", req.method());
     let (parts_req, body) = req.into_parts();
 
     let proxied_uri = match parts_req.uri.query() {
@@ -80,14 +94,26 @@ async fn web_request_proxy_service(
     match response_result {
         Ok(response) => {
             let (parts_resp, body) = response.into_parts();
-            let mut body_bytes = to_bytes(body).await?.to_vec();
+            // TODO: want to handle HEAD cleaner, this feels like a hack
+            let body_bytes = if matches!(parts_req.method.as_str(), "GET" | "POST" | "PUT") {
+                let mut body_bytes = to_bytes(body)
+                    .await
+                    .map_err(|e| anyhow::anyhow!("error reading proxied response body: {e:?}"))?
+                    .to_vec();
+                trace!(
+                    "got response from remote with body size {}",
+                    body_bytes.len()
+                );
 
-            if matches!(parts_req.method.as_str(), "GET" | "POST") {
                 let request_hook_res = response_hook(&proxied_uri, &mut body_bytes);
                 if let Err(error) = request_hook_res {
                     error!("Error during request hook: {error}");
                 }
-            }
+
+                body_bytes
+            } else {
+                vec![]
+            };
 
             let mut response = Response::builder();
 
