@@ -75,7 +75,6 @@ impl App for DownloaderDialog {
         // re-draw continuously to make sure the channel reader runs
         ctx.request_repaint();
 
-        // todo: read from receiver
         let rx_scraper = self
             .rx_scraper
             .get_or_insert_with(|| scraper::start_download().unwrap());

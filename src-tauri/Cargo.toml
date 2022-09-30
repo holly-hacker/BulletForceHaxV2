@@ -15,6 +15,7 @@ rust-version = "1.57"
 tauri-build = { version = "1.1.1", features = [] }
 
 [dependencies]
+photon_lib = { path = "../photon_lib" }
 serde_json = "1"
 serde = { version = "1", features = ["derive"] }
 tauri = { version = "1.1", features = ["api-all"] }
@@ -32,6 +33,7 @@ tokio-tungstenite = { version = "0.17.2", features = ["native-tls"] }
 futures-util = "0.3.24"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt"] }
+bytes = "1"
 
 [features]
 # by default Tauri runs in production mode

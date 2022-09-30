@@ -2,3 +2,7 @@
 
 # download cache
 bfhax_data
+
+# coverage data
+*.profraw
+lcov.info

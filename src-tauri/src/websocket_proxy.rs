@@ -6,6 +6,7 @@ use futures_util::lock::Mutex;
 use futures_util::{Sink, SinkExt, Stream, StreamExt};
 use hyper::header::HeaderName;
 use hyper::http::{HeaderValue, Request};
+use photon_lib::photon_message::PhotonMessage;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::oneshot;
 use tokio_tungstenite::tungstenite::{handshake::server::Callback, Message};
@@ -135,7 +136,10 @@ fn start_proxy_task(
                 let message = message.unwrap();
                 trace!("Message: {:?}", message);
 
-                // TODO: install hook here
+                // TODO: install proper hook
+                if let Message::Binary(b) = &message {
+                    test_hook(b, direction);
+                }
 
                 sink.lock().await.send(message).await.unwrap();
             }
@@ -190,4 +194,10 @@ impl Callback for WebsocketHandshakeCallback {
         }
         Ok(response)
     }
+}
+
+fn test_hook(data: &[u8], direction: &'static str) {
+    let mut bytes = bytes::Bytes::copy_from_slice(data);
+    let deserialized = PhotonMessage::from_websocket_bytes(&mut bytes);
+    debug!("{direction} data: {deserialized:?}");
 }
