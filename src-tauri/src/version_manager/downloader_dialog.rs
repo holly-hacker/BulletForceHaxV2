@@ -4,17 +4,16 @@ use std::{
 };
 
 use anyhow::Result;
+use bulletforcehax2_lib::version_scraper::*;
 use tauri_egui::{
     eframe::App,
     egui::{self, Color32, ProgressBar, RichText},
 };
 use tracing::{debug, info};
 
-use super::scraper;
-
 pub struct DownloaderDialog {
     tx: Sender<Vec<DownloadedFile>>,
-    rx_scraper: Option<Receiver<scraper::ProgressReport>>,
+    rx_scraper: Option<Receiver<ProgressReport>>,
     file_progress: HashMap<String, FileDownloadProgress>,
     files: Vec<DownloadedFile>,
     error: Option<String>,
@@ -23,7 +22,7 @@ pub struct DownloaderDialog {
 #[derive(Clone)]
 pub struct DownloadedFile {
     pub name: String,
-    pub file_type: scraper::FileType,
+    pub file_type: FileType,
     pub data: Vec<u8>,
 }
 
@@ -77,11 +76,11 @@ impl App for DownloaderDialog {
 
         let rx_scraper = self
             .rx_scraper
-            .get_or_insert_with(|| scraper::start_download().unwrap());
+            .get_or_insert_with(|| start_download_thread().unwrap());
 
         while let Ok(report) = rx_scraper.try_recv() {
             match report {
-                scraper::ProgressReport::Progress {
+                ProgressReport::Progress {
                     file_type: _,
                     name,
                     downloaded,
@@ -102,7 +101,7 @@ impl App for DownloaderDialog {
                         );
                     }
                 },
-                scraper::ProgressReport::Finished {
+                ProgressReport::FileDownloaded {
                     file_type,
                     name,
                     data,
@@ -130,12 +129,12 @@ impl App for DownloaderDialog {
                         data,
                     });
                 }
-                scraper::ProgressReport::Done => {
+                ProgressReport::AllFilesDownloaded => {
                     info!("Finished downloading all files, closing dialog");
                     self.tx.send(self.files.clone()).unwrap();
                     frame.close()
                 }
-                scraper::ProgressReport::Crashed(e) => self.error = Some(e),
+                ProgressReport::Crashed(e) => self.error = Some(e),
             }
         }
 

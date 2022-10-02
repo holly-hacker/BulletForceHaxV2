@@ -4,11 +4,10 @@
 )]
 
 mod version_manager;
-mod webrequest_proxy;
-mod websocket_proxy;
 
 use std::path::Path;
 
+use bulletforcehax2_lib::{init_webrequest_proxy, init_websocket_proxy};
 use once_cell::sync::OnceCell;
 use tauri::{
     http::{Request, Response, ResponseBuilder},
@@ -60,6 +59,7 @@ async fn main() {
 
     subscriber.with(filter).init();
 
+    #[cfg(debug_assertions)]
     {
         tracing::trace!("trace enabled");
         tracing::debug!("debug enabled");
@@ -86,14 +86,8 @@ async fn main() {
     info!("Initialized game version global");
 
     // set up web proxy
-    tokio::spawn(async move {
-        webrequest_proxy::block_on_server().await;
-    });
-
-    // set up web socket proxy
-    tokio::spawn(async move {
-        websocket_proxy::block_on_server().await;
-    });
+    init_webrequest_proxy();
+    init_websocket_proxy();
 
     // create tauri app and block on it
     // when the tauri app closes, exit from main

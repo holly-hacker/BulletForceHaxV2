@@ -1,9 +1,9 @@
 mod downloader_dialog;
-mod scraper;
 
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
+use bulletforcehax2_lib::version_scraper::FileType;
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
@@ -49,9 +49,9 @@ impl VersionManager {
                 std::fs::write(path, file.data)?;
 
                 match file.file_type {
-                    scraper::FileType::UnityLoader => loader = Some(file.name),
-                    scraper::FileType::GameJson => json = Some(file.name),
-                    scraper::FileType::GameFile => (),
+                    FileType::UnityLoader => loader = Some(file.name),
+                    FileType::GameJson => json = Some(file.name),
+                    FileType::GameFile => (),
                 }
             }
 

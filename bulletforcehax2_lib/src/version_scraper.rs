@@ -1,3 +1,5 @@
+//! Provides a method to download the latest version of the game files.
+
 use std::sync::mpsc::{channel, Receiver, Sender};
 
 use anyhow::{anyhow, Context, Result};
@@ -10,6 +12,7 @@ const POKI_FRAME_URL_PATTERN: &str = r"https://games\.poki\.com/\d+/[\da-f-]+";
 const POKI_GAME_URL_PATTERN: &str = r"https://[a-f\d-]+\.poki-gdn\.com/[a-f\d-]+/index\.html";
 const POKI_GAME_JSON_PATTERN: &str = r"unityWebglBuildUrl: '([^']+)'";
 
+/// Describes the role of a downloading file.
 #[derive(Clone, Copy)]
 pub enum FileType {
     UnityLoader,
@@ -17,23 +20,29 @@ pub enum FileType {
     GameFile,
 }
 
+/// Indicates progress on a downloading file
 pub enum ProgressReport {
+    /// Indicates that a file is being downloaded and lists the download progress.
     Progress {
         file_type: FileType,
         name: String,
         downloaded: u64,
         total: Option<u64>,
     },
-    Finished {
+    /// Indicates that a file has finished downloading.
+    FileDownloaded {
         file_type: FileType,
         name: String,
         data: Vec<u8>,
     },
-    Done,
+    /// Indicates that all files have been downloaded and the download process has finished.
+    AllFilesDownloaded,
+    /// Indicates that something went wrong with the download and the download process has been aborted.
     Crashed(String),
 }
 
-pub fn start_download() -> Result<Receiver<ProgressReport>> {
+/// Starts a thread that scrapes and downloads the game files. It returns a receiver that produces progress info.
+pub fn start_download_thread() -> Result<Receiver<ProgressReport>> {
     let (tx, rx) = channel();
 
     std::thread::spawn(move || {
@@ -104,7 +113,7 @@ fn do_download(tx: Sender<ProgressReport>) -> Result<()> {
         download_file_with_progress(&abs_url_file, file_name, FileType::GameFile, tx.clone())?;
     }
 
-    tx.send(ProgressReport::Done)?;
+    tx.send(ProgressReport::AllFilesDownloaded)?;
 
     Ok(())
 }
@@ -144,7 +153,7 @@ fn download_file_with_progress(
                 total: content_length,
             })?;
         } else {
-            tx.send(ProgressReport::Finished {
+            tx.send(ProgressReport::FileDownloaded {
                 file_type,
                 name: name.to_string(),
                 data,
