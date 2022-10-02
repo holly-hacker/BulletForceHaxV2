@@ -1,4 +1,21 @@
-# Code Coverage
+# Project structure
+
+This project contains/will contain the following crates:
+- `src-tauri`: Tauri frontend code. This spawns a webview with the game loaded, and automatically runs BulletForceHaxV2 in the background.
+- `bulletforcehax2_ui`: egui-based UI code for controlling BulletForceHaxV2.
+- `bulletforcehax2_lib`: The core logic of BulletForceHaxV2.
+- `photon_bulletforce`: Conversion of photon types to bulletforce types.
+- `photon_lib`: Low-level implementation of the photon network protocol.
+
+Dependency graph:
+```mermaid
+flowchart TD
+    src-tauri --> bulletforcehax2_ui & bulletforcehax2_lib
+    bulletforcehax2_ui --> bulletforcehax2_lib
+    bulletforcehax2_lib --> photon_bulletforce --> photon_lib
+```
+
+# Checking code coverage
 Requirements:
 - Just (`cargo install just` or [install as package](https://just.systems/man/en/chapter_4.html))
 - grcov (`cargo install grcov` or [download the binary](https://github.com/mozilla/grcov/releases))
