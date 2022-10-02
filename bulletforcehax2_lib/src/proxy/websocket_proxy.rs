@@ -8,9 +8,9 @@ use hyper::header::HeaderName;
 use hyper::http::{HeaderValue, Request};
 use photon_lib::photon_message::PhotonMessage;
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::oneshot;
+use tokio::sync::{mpsc, oneshot, Notify};
 use tokio_tungstenite::tungstenite::{handshake::server::Callback, Message};
-use tracing::{debug, info, info_span, trace, Instrument};
+use tracing::{debug, error, info, info_span, trace, Instrument};
 
 type SocketStream =
     Box<dyn Stream<Item = tokio_tungstenite::tungstenite::Result<Message>> + Unpin + Send>;
@@ -19,18 +19,32 @@ type SocketSink =
 
 #[allow(dead_code)]
 /// A struct holding a conceptual websocket proxy connection
-struct WebSocketProxy {
+pub struct WebSocketProxy {
+    /// a sink to allow sending messages to the client at arbitrary times
     client_send: Arc<Mutex<SocketSink>>,
+    /// a sink to allow sending messages to the server at arbitrary times
     server_send: Arc<Mutex<SocketSink>>,
 
     /// a handle to the task that controls client->server communication
     client_to_server: tokio::task::JoinHandle<()>,
     /// a handle to the task that controls server->client communication
     server_to_client: tokio::task::JoinHandle<()>,
+
+    port: u16,
+
+    notify_closed: Option<Arc<Notify>>,
 }
 
 #[allow(dead_code)]
 impl WebSocketProxy {
+    pub fn get_port(&self) -> u16 {
+        self.port
+    }
+
+    pub(crate) fn take_notify_closed(&mut self) -> Option<Arc<Notify>> {
+        self.notify_closed.take()
+    }
+
     pub async fn send_client(&self, message: Message) -> anyhow::Result<()> {
         self.client_send.lock().await.send(message).await?;
         Ok(())
@@ -43,15 +57,31 @@ impl WebSocketProxy {
 }
 
 /// Starts listening for client socket connections
-pub async fn block_on_server() {
+pub async fn block_on_server(new_connection_sender: Option<mpsc::Sender<WebSocketProxy>>) {
     let addr = SocketAddr::from(([127, 0, 0, 1], 48898));
 
     let listener = TcpListener::bind(addr).await.unwrap();
 
     while let Ok((stream, _socket_address)) = listener.accept().await {
+        let sender = new_connection_sender.clone();
         tokio::spawn(async move {
-            let _proxy = accept_connection(stream).await;
-            // TODO: send this proxy over a channel so it can be installed in a global object
+            let result = accept_connection(stream).await;
+            match result {
+                Ok(connection) => {
+                    info!(
+                        "new websocket connection accepted for target port {}",
+                        connection.port
+                    );
+                    if let Some(sender) = sender {
+                        if let Err(_) = sender.send(connection).await {
+                            error!("Tried to send websocket connection over channel but it failed");
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("Error while accepting new websocket connection: {e}");
+                }
+            }
         });
     }
 }
@@ -105,6 +135,8 @@ async fn accept_connection(stream: TcpStream) -> Result<WebSocketProxy> {
         ws_stream.split()
     };
 
+    let notify_closed = Arc::new(Notify::new());
+
     // these explicit type definitions are required because it tells the compiler to use `Box<impl SomeTrait>`
     let client_send: SocketSink = Box::new(client_send);
     let server_send: SocketSink = Box::new(server_send);
@@ -112,14 +144,26 @@ async fn accept_connection(stream: TcpStream) -> Result<WebSocketProxy> {
     let client_send = Arc::new(Mutex::new(client_send));
     let server_send = Arc::new(Mutex::new(server_send));
 
-    let client_to_server = start_proxy_task(Box::new(client_recv), server_send.clone(), "c->s");
-    let server_to_client = start_proxy_task(Box::new(server_recv), client_send.clone(), "s->c");
+    let client_to_server = start_proxy_task(
+        Box::new(client_recv),
+        server_send.clone(),
+        "c->s",
+        notify_closed.clone(),
+    );
+    let server_to_client = start_proxy_task(
+        Box::new(server_recv),
+        client_send.clone(),
+        "s->c",
+        notify_closed.clone(),
+    );
 
     Ok(WebSocketProxy {
         client_send,
         server_send,
         client_to_server,
         server_to_client,
+        port: target_uri.port().map(|p| p.as_u16()).unwrap_or(0),
+        notify_closed: Some(notify_closed),
     })
 }
 
@@ -127,12 +171,13 @@ fn start_proxy_task(
     mut stream: SocketStream,
     sink: Arc<Mutex<SocketSink>>,
     direction: &'static str,
+    notify_closed: Arc<Notify>,
 ) -> tokio::task::JoinHandle<()> {
     let span = info_span!("WebSocketProxy", direction);
     tokio::spawn(
         async move {
             while let Some(message) = stream.next().await {
-                // TODO: don't unwrap
+                // TODO: don't unwrap. what can this error on?
                 let message = message.unwrap();
                 trace!("Message: {:?}", message);
 
@@ -141,10 +186,17 @@ fn start_proxy_task(
                     test_hook(b, direction);
                 }
 
-                sink.lock().await.send(message).await.unwrap();
+                let send_result = sink.lock().await.send(message).await;
+
+                match send_result {
+                    Ok(_) => (),
+                    Err(tokio_tungstenite::tungstenite::Error::ConnectionClosed) => (), // this is fine
+                    Err(e) => error!("An error occured while sending a packet: {e}"),
+                }
             }
 
-            // TODO: signal death of the connection
+            // signal death of the connection
+            notify_closed.notify_one();
         }
         .instrument(span),
     )

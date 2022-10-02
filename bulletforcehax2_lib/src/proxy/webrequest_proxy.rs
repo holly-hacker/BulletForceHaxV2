@@ -26,6 +26,7 @@ pub async fn block_on_server() {
 
     debug!("http server created");
     if let Err(e) = server.await {
+        // TODO: this should return an error instead!
         error!("server error: {}", e);
     }
 }

@@ -7,7 +7,7 @@ mod version_manager;
 
 use std::path::Path;
 
-use bulletforcehax2_lib::{init_webrequest_proxy, init_websocket_proxy};
+use bulletforcehax2_lib::hax::BulletForceHax;
 use once_cell::sync::OnceCell;
 use tauri::{
     http::{Request, Response, ResponseBuilder},
@@ -49,13 +49,16 @@ fn bulletforce_handler(
 #[tokio::main]
 async fn main() {
     // initialize logging
+    let default_logging_level = tracing::Level::INFO;
     let subscriber = tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
+        .with_max_level(default_logging_level)
         .with_timer(tracing_subscriber::fmt::time::uptime())
         .finish();
 
-    let filter =
-        tracing_subscriber::filter::Targets::new().with_target("app", tracing::Level::DEBUG);
+    let filter = tracing_subscriber::filter::Targets::new()
+        .with_target("app", default_logging_level)
+        .with_target("bulletforcehax2_lib", default_logging_level)
+        .with_target("bulletforcehax2_ui", default_logging_level);
 
     subscriber.with(filter).init();
 
@@ -79,15 +82,13 @@ async fn main() {
         },
     };
 
-    GAME_VERSION
-        .set(version_info)
-        .ok()
-        .expect("set version info global");
+    GAME_VERSION.set(version_info).ok().unwrap();
     info!("Initialized game version global");
 
-    // set up web proxy
-    init_webrequest_proxy();
-    init_websocket_proxy();
+    let mut hax = BulletForceHax::default();
+    hax.start_webrequest_proxy();
+    hax.start_websocket_proxy();
+    info!("Initialized hax");
 
     // create tauri app and block on it
     // when the tauri app closes, exit from main
