@@ -11,7 +11,7 @@ use bulletforcehax2_lib::{init_webrequest_proxy, init_websocket_proxy};
 use once_cell::sync::OnceCell;
 use tauri::{
     http::{Request, Response, ResponseBuilder},
-    AppHandle, Manager,
+    AppHandle,
 };
 use tracing::{debug, info};
 use tracing_subscriber::prelude::*;
@@ -97,7 +97,10 @@ async fn main() {
 
             // automatically open devtools on debug builds
             #[cfg(debug_assertions)]
-            _app.get_window("main").unwrap().open_devtools();
+            {
+                use tauri::Manager;
+                _app.get_window("main").unwrap().open_devtools();
+            }
             Ok(())
         })
         .register_uri_scheme_protocol("bulletforce", bulletforce_handler)

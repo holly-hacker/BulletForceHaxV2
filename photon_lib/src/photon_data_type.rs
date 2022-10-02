@@ -1,7 +1,18 @@
+// Disable the clippy lint related to "manual" hash implementations for this file.
+// Because `Indexmap` does not have a hash implementation, we need to specify our own hash function usind the
+// `derivative` crate. Clippy does not like this because the (Partial)Eq and Hash function may become out of sync and
+// provide conflicting results. I have verified the current implementations but it seems impossible or annoying to
+// disable this lint for just derive attributes, so we disable it for the entire file.
+#![allow(clippy::derive_hash_xor_eq)]
+
+use std::cmp::Ordering;
+
 use bytes::{Buf, Bytes};
+use derivative::Derivative;
 use indexmap::IndexMap;
 use ordered_float::OrderedFloat;
-use std::hash::Hash;
+
+// use std::hash::Hash;
 
 use crate::{
     check_remaining,
@@ -10,13 +21,17 @@ use crate::{
 };
 
 /// A serialized .NET object
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq, Derivative)]
+#[derivative(Hash)]
 pub enum PhotonDataType {
     #[default]
     /// Data type 0x2A, represents .NET's `null`
     Null,
     /// Data type 0x44, holds an `IDictionary<object, object>`
-    Dictionary(IndexMap<PhotonDataType, PhotonDataType>),
+    Dictionary(
+        #[derivative(Hash(hash_with = "crate::utils::derive_utils::hash_indexmap"))]
+        IndexMap<PhotonDataType, PhotonDataType>,
+    ),
     /// Data type 0x61, holds a `string[]`.
     StringArray(Vec<String>),
     /// Data type 0x62, holds a `byte`
@@ -30,7 +45,10 @@ pub enum PhotonDataType {
     /// Data type 0x66, holds a `float`
     Float(OrderedFloat<f32>),
     /// Data type 0x68, holds a photon Hashtable. This hashtable aims to mimic `System.Collections.Hashtable`.
-    Hashtable(IndexMap<PhotonDataType, PhotonDataType>),
+    Hashtable(
+        #[derivative(Hash(hash_with = "crate::utils::derive_utils::hash_indexmap"))]
+        IndexMap<PhotonDataType, PhotonDataType>,
+    ),
     /// Data type 0x69, holds an `int`
     Integer(i32),
     /// Data type 0x6B, holds a `short`
@@ -123,9 +141,9 @@ impl PhotonDataType {
                 let type_code = bytes.get_u8();
                 let len = bytes.get_i16();
                 if len < 0 {
-                    return Err(ParseError::UnexpectedDataError(
+                    Err(ParseError::UnexpectedData(
                         "negative length for custom data",
-                    ));
+                    ))
                 } else {
                     check_remaining!(bytes, len as usize);
                     let mut v = vec![0u8; len as usize];
@@ -199,19 +217,22 @@ impl PhotonDataType {
             0x73 => {
                 check_remaining!(bytes, 2);
                 let len = bytes.get_i16();
-                let str = if len > 0 {
-                    check_remaining!(bytes, len as usize);
-                    let mut buffer = vec![0u8; len as usize];
-                    bytes.copy_to_slice(&mut buffer);
+                let str = match len.cmp(&0) {
+                    Ordering::Greater => {
+                        check_remaining!(bytes, len as usize);
+                        let mut buffer = vec![0u8; len as usize];
+                        bytes.copy_to_slice(&mut buffer);
 
-                    // NOTE: System.Text.Encoding.UTF8.GetString will replace invalid unicode with �, so we imitate
-                    // that behavior.
-                    let str = String::from_utf8_lossy(&buffer);
-                    str.to_string()
-                } else if len == 0 {
-                    String::new()
-                } else {
-                    return Err(ParseError::UnexpectedDataError("string length less than 0"));
+                        // NOTE: System.Text.Encoding.UTF8.GetString will replace invalid unicode with �, so we imitate
+                        // that behavior.
+                        let str = String::from_utf8_lossy(&buffer);
+                        str.to_string()
+                    }
+                    Ordering::Equal => String::new(),
+                    // this seems inconsistent with other branches but this is what the original code would do
+                    Ordering::Less => {
+                        return Err(ParseError::UnexpectedData("string length less than 0"));
+                    }
                 };
 
                 Ok(PhotonDataType::String(str))
@@ -220,7 +241,7 @@ impl PhotonDataType {
                 check_remaining!(bytes, 4);
                 let len = bytes.get_i32();
                 if len < 0 {
-                    return Err(ParseError::UnexpectedDataError("byte[] lenght less than 0"));
+                    return Err(ParseError::UnexpectedData("byte[] lenght less than 0"));
                 }
 
                 check_remaining!(bytes, len as usize);
@@ -253,9 +274,7 @@ impl PhotonDataType {
                 let len = bytes.get_i16();
 
                 if len < 0 {
-                    return Err(ParseError::UnexpectedDataError(
-                        "object[] length less than 0",
-                    ));
+                    return Err(ParseError::UnexpectedData("object[] length less than 0"));
                 }
 
                 let mut v = Vec::with_capacity(len as usize);
@@ -266,49 +285,6 @@ impl PhotonDataType {
                 Ok(PhotonDataType::ObjectArray(v))
             }
             _ => Err(ParseError::UnknownDataType(data_type)),
-        }
-    }
-}
-
-// NOTE: could also have done this with the `derivative` crate:
-// https://mcarton.github.io/rust-derivative/latest/Hash.html
-impl Hash for PhotonDataType {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        core::mem::discriminant(self).hash(state);
-        match self {
-            PhotonDataType::Null => (),
-            PhotonDataType::Dictionary(x) => {
-                for (key, value) in x {
-                    key.hash(state);
-                    value.hash(state);
-                }
-            }
-            PhotonDataType::StringArray(x) => x.hash(state),
-            PhotonDataType::Byte(x) => x.hash(state),
-            PhotonDataType::Custom(x, y) => {
-                x.hash(state);
-                y.hash(state);
-            }
-            PhotonDataType::Double(x) => x.hash(state),
-            PhotonDataType::EventData(x) => x.hash(state),
-            PhotonDataType::Float(x) => x.hash(state),
-            PhotonDataType::Hashtable(x) => {
-                for (key, value) in x {
-                    key.hash(state);
-                    value.hash(state);
-                }
-            }
-            PhotonDataType::Integer(x) => x.hash(state),
-            PhotonDataType::Short(x) => x.hash(state),
-            PhotonDataType::Long(x) => x.hash(state),
-            PhotonDataType::IntArray(x) => x.hash(state),
-            PhotonDataType::Boolean(x) => x.hash(state),
-            PhotonDataType::OperationResponse(x) => x.hash(state),
-            PhotonDataType::OperationRequest(x) => x.hash(state),
-            PhotonDataType::String(x) => x.hash(state),
-            PhotonDataType::ByteArray(x) => x.hash(state),
-            PhotonDataType::Array(x) => x.hash(state),
-            PhotonDataType::ObjectArray(x) => x.hash(state),
         }
     }
 }

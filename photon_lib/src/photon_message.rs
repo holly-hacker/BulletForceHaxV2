@@ -1,11 +1,17 @@
-use std::hash::Hash;
+// Disable the clippy lint related to "manual" hash implementations for this file.
+// Because `Indexmap` does not have a hash implementation, we need to specify our own hash function usind the
+// `derivative` crate. Clippy does not like this because the (Partial)Eq and Hash function may become out of sync and
+// provide conflicting results. I have verified the current implementations but it seems impossible or annoying to
+// disable this lint for just derive attributes, so we disable it for the entire file.
+#![allow(clippy::derive_hash_xor_eq)]
 
 use bytes::{Buf, Bytes};
+use derivative::Derivative;
 use indexmap::IndexMap;
 
 use crate::{check_remaining, photon_data_type::PhotonDataType, ParseError};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum PhotonMessage {
     // NOTE: 0 is most likely Init packet, but websocket does not seem to use it
     /// Message type 0x01, indicates that connection has been established.
@@ -46,7 +52,7 @@ impl PhotonMessage {
                 Ok(PhotonMessage::from_bytes_f3(data)?)
             }
             0xF0 => Ok(PhotonMessage::PingResult(PingResult::from_bytes(data)?)),
-            _ => return Err(ParseError::InvalidMagicNumber(magic_number)),
+            _ => Err(ParseError::InvalidMagicNumber(magic_number)),
         }
     }
 
@@ -114,9 +120,11 @@ impl PingResult {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Derivative)]
+#[derivative(Hash)]
 pub struct OperationRequest {
     pub operation_code: u8,
+    #[derivative(Hash(hash_with = "crate::utils::derive_utils::hash_indexmap"))]
     pub parameters: IndexMap<u8, PhotonDataType>,
 }
 
@@ -133,21 +141,13 @@ impl OperationRequest {
     }
 }
 
-impl Hash for OperationRequest {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.operation_code.hash(state);
-        for (key, value) in &self.parameters {
-            key.hash(state);
-            value.hash(state);
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Derivative)]
+#[derivative(Hash)]
 pub struct OperationResponse {
     pub operation_code: u8,
     pub return_code: i16,
     pub debug_message: Option<String>,
+    #[derivative(Hash(hash_with = "crate::utils::derive_utils::hash_indexmap"))]
     pub parameters: IndexMap<u8, PhotonDataType>,
 }
 
@@ -160,7 +160,7 @@ impl OperationResponse {
             PhotonDataType::String(s) => Some(s),
             PhotonDataType::Null => None,
             _ => {
-                return Err(ParseError::UnexpectedDataError(
+                return Err(ParseError::UnexpectedData(
                     "expected string or null in operation response debug message",
                 ))
             }
@@ -176,21 +176,11 @@ impl OperationResponse {
     }
 }
 
-impl Hash for OperationResponse {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.operation_code.hash(state);
-        self.return_code.hash(state);
-        self.debug_message.hash(state);
-        for (key, value) in &self.parameters {
-            key.hash(state);
-            value.hash(state);
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Derivative)]
+#[derivative(Hash)]
 pub struct EventData {
     pub code: u8,
+    #[derivative(Hash(hash_with = "crate::utils::derive_utils::hash_indexmap"))]
     pub parameters: IndexMap<u8, PhotonDataType>,
     // protocol 18 has a `sender` and `custom data` field, but we only support protocol 16 for now
 }
@@ -205,20 +195,12 @@ impl EventData {
     }
 }
 
-impl Hash for EventData {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.code.hash(state);
-        for (key, value) in &self.parameters {
-            key.hash(state);
-            value.hash(state);
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Derivative)]
+#[derivative(Hash)]
 pub struct DisconnectMessage {
     pub code: i16,
     pub debug_message: Option<String>,
+    #[derivative(Hash(hash_with = "crate::utils::derive_utils::hash_indexmap"))]
     pub parameters: IndexMap<u8, PhotonDataType>,
 }
 
@@ -230,7 +212,7 @@ impl DisconnectMessage {
             PhotonDataType::String(s) => Some(s),
             PhotonDataType::Null => None,
             _ => {
-                return Err(ParseError::UnexpectedDataError(
+                return Err(ParseError::UnexpectedData(
                     "expected string or null in operation response debug message",
                 ))
             }
@@ -242,17 +224,6 @@ impl DisconnectMessage {
             debug_message,
             parameters,
         })
-    }
-}
-
-impl Hash for DisconnectMessage {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.code.hash(state);
-        self.debug_message.hash(state);
-        for (key, value) in &self.parameters {
-            key.hash(state);
-            value.hash(state);
-        }
     }
 }
 

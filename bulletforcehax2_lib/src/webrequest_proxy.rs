@@ -132,11 +132,13 @@ async fn web_request_proxy(req: Request<Body>) -> anyhow::Result<Response<Body>>
     }
 }
 
+#[allow(clippy::ptr_arg)]
 fn request_hook(_url: &hyper::Uri, _bytes: &mut Vec<u8>) -> Result<()> {
     Ok(())
 }
 
 fn response_hook(url: &hyper::Uri, bytes: &mut Vec<u8>) -> Result<()> {
+    #[allow(clippy::single_match)]
     match url.path() {
         "/OnlineAccountSystem/get-promotional-multipliers.php" => {
             *bytes = r#"{"credsMult":2,"xpMult":2}"#.into();
