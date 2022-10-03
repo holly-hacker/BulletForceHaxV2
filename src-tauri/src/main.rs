@@ -5,13 +5,15 @@
 
 mod version_manager;
 
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
-use bulletforcehax2_lib::hax::BulletForceHax;
+use bulletforcehax2_lib::hax::{BulletForceHax, HaxState};
+use bulletforcehax2_ui::BulletForceHaxMenu;
+use futures_util::lock::Mutex;
 use once_cell::sync::OnceCell;
 use tauri::{
     http::{Request, Response, ResponseBuilder},
-    AppHandle,
+    AppHandle, CustomMenuItem, Manager, Menu, MenuItem, Submenu,
 };
 use tracing::{debug, info};
 use tracing_subscriber::prelude::*;
@@ -74,6 +76,7 @@ async fn main() {
     // version manager init
     let version_manager = VersionManager::new(Path::new("bfhax_data")).unwrap();
 
+    // NOTE: this does not use the tauri lifecycle management
     let version_info = match version_manager.version() {
         Some(x) => x,
         None => match version_manager.show_version_downloader_blocking().unwrap() {
@@ -90,19 +93,47 @@ async fn main() {
     hax.start_websocket_proxy();
     info!("Initialized hax");
 
+    let state = hax.get_state();
+
+    // create menu
+    let file_submenu = Submenu::new("File", Menu::new().add_native_item(MenuItem::Quit));
+    let menu = Menu::new()
+        .add_submenu(file_submenu)
+        .add_item(CustomMenuItem::new("show_menu", "Menu"));
+
     // create tauri app and block on it
     // when the tauri app closes, exit from main
     tauri::Builder::default()
-        .setup(|_app| {
-            // app.wry_plugin(tauri_egui::EguiPluginBuilder::new(app.handle()));
+        .setup(|app| {
+            app.wry_plugin(tauri_egui::EguiPluginBuilder::new(app.handle()));
 
             // automatically open devtools on debug builds
             #[cfg(debug_assertions)]
             {
                 use tauri::Manager;
-                _app.get_window("main").unwrap().open_devtools();
+                app.get_window("main").unwrap().open_devtools();
             }
             Ok(())
+        })
+        .manage(state)
+        .menu(menu)
+        .on_menu_event(|event| match event.menu_item_id() {
+            "show_menu" => {
+                let app = event.window().app_handle();
+                let state: tauri::State<Arc<Mutex<HaxState>>> = app.state();
+                let state = state.inner().clone();
+
+                info!("Opening hax ui");
+                app.state::<tauri_egui::EguiPluginHandle>()
+                    .create_window(
+                        "login".to_string(),
+                        Box::new(move |_cc| Box::new(BulletForceHaxMenu::new(state.clone()))),
+                        "Hax Menu".into(),
+                        tauri_egui::eframe::NativeOptions::default(),
+                    )
+                    .unwrap();
+            }
+            _ => (),
         })
         .register_uri_scheme_protocol("bulletforce", bulletforce_handler)
         .run(tauri::generate_context!())

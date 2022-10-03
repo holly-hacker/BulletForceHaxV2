@@ -23,11 +23,15 @@ pub struct BulletForceHax {
 /// The internal state.
 #[derive(Default)]
 pub struct HaxState {
-    lobby_socket: Option<WebSocketProxy>,
-    gameplay_socket: Option<WebSocketProxy>,
+    pub lobby_socket: Option<WebSocketProxy>,
+    pub gameplay_socket: Option<WebSocketProxy>,
 }
 
 impl BulletForceHax {
+    pub fn get_state(&self) -> Arc<futures_util::lock::Mutex<HaxState>> {
+        self.state.clone()
+    }
+
     /// Creates the webrequest proxy handler thread. Panics if one has already been created.
     pub fn start_webrequest_proxy(&mut self) {
         if self.webrequest_proxy.is_some() {

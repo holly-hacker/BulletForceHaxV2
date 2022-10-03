@@ -16,6 +16,8 @@ tauri-build = { version = "1.1.1", features = [] }
 
 [dependencies]
 bulletforcehax2_lib = { path = "../bulletforcehax2_lib" }
+bulletforcehax2_ui = { path = "../bulletforcehax2_ui" }
+futures-util = "0.3"
 serde_json = "1"
 serde = { version = "1", features = ["derive"] }
 tauri = { version = "1.1", features = ["api-all"] }

@@ -1,0 +1,16 @@
+[package]
+name = "bulletforcehax2_ui"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bulletforcehax2_lib = { path = "../bulletforcehax2_lib" }
+futures = { version = "0.3", features = ["executor"] }
+futures-util = "0.3"
+egui = "0.19"
+tokio = "1"
+
+# NOTE: we need to use tauri's eframe fork, because that's what they use I guess
+eframe = { package = "eframe_tao", version = "0.20.0" }
