@@ -6,11 +6,12 @@ use futures_util::lock::Mutex;
 use futures_util::{Sink, SinkExt, Stream, StreamExt};
 use hyper::header::HeaderName;
 use hyper::http::{HeaderValue, Request};
-use photon_lib::photon_message::PhotonMessage;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{mpsc, oneshot, Notify};
 use tokio_tungstenite::tungstenite::{handshake::server::Callback, Message};
 use tracing::{debug, error, info, info_span, trace, Instrument};
+
+use crate::hax::HaxState;
 
 type SocketStream =
     Box<dyn Stream<Item = tokio_tungstenite::tungstenite::Result<Message>> + Unpin + Send>;
@@ -57,25 +58,27 @@ impl WebSocketProxy {
 }
 
 /// Starts listening for client socket connections
-pub async fn block_on_server(new_connection_sender: Option<mpsc::Sender<WebSocketProxy>>) {
+pub async fn block_on_server(
+    new_connection_sender: mpsc::Sender<WebSocketProxy>,
+    shared_state: Arc<Mutex<HaxState>>,
+) {
     let addr = SocketAddr::from(([127, 0, 0, 1], 48898));
 
     let listener = TcpListener::bind(addr).await.unwrap();
 
     while let Ok((stream, _socket_address)) = listener.accept().await {
         let sender = new_connection_sender.clone();
+        let state = shared_state.clone();
         tokio::spawn(async move {
-            let result = accept_connection(stream).await;
+            let result = accept_connection(stream, state).await;
             match result {
                 Ok(connection) => {
                     info!(
                         "new websocket connection accepted for target port {}",
                         connection.port
                     );
-                    if let Some(sender) = sender {
-                        if let Err(_) = sender.send(connection).await {
-                            error!("Tried to send websocket connection over channel but it failed");
-                        }
+                    if sender.send(connection).await.is_err() {
+                        error!("Tried to send websocket connection over channel but it failed");
                     }
                 }
                 Err(e) => {
@@ -86,7 +89,10 @@ pub async fn block_on_server(new_connection_sender: Option<mpsc::Sender<WebSocke
     }
 }
 
-async fn accept_connection(stream: TcpStream) -> Result<WebSocketProxy> {
+async fn accept_connection(
+    stream: TcpStream,
+    shared_state: Arc<Mutex<HaxState>>,
+) -> Result<WebSocketProxy> {
     let addr = stream
         .peer_addr()
         .expect("connected streams should have a peer address");
@@ -149,12 +155,14 @@ async fn accept_connection(stream: TcpStream) -> Result<WebSocketProxy> {
         server_send.clone(),
         "c->s",
         notify_closed.clone(),
+        shared_state.clone(),
     );
     let server_to_client = start_proxy_task(
         Box::new(server_recv),
         client_send.clone(),
         "s->c",
         notify_closed.clone(),
+        shared_state.clone(),
     );
 
     Ok(WebSocketProxy {
@@ -172,18 +180,19 @@ fn start_proxy_task(
     sink: Arc<Mutex<SocketSink>>,
     direction: &'static str,
     notify_closed: Arc<Notify>,
+    shared_state: Arc<Mutex<HaxState>>,
 ) -> tokio::task::JoinHandle<()> {
     let span = info_span!("WebSocketProxy", direction);
     tokio::spawn(
         async move {
             while let Some(message) = stream.next().await {
                 // TODO: don't unwrap. what can this error on?
-                let message = message.unwrap();
+                let mut message = message.unwrap();
                 trace!("Message: {:?}", message);
 
                 // TODO: install proper hook
-                if let Message::Binary(b) = &message {
-                    test_hook(b, direction);
+                if let Message::Binary(b) = &mut message {
+                    HaxState::websocket_hook(shared_state.clone(), b, direction);
                 }
 
                 let send_result = sink.lock().await.send(message).await;
@@ -246,10 +255,4 @@ impl Callback for WebsocketHandshakeCallback {
         }
         Ok(response)
     }
-}
-
-fn test_hook(data: &[u8], direction: &'static str) {
-    let mut bytes = bytes::Bytes::copy_from_slice(data);
-    let deserialized = PhotonMessage::from_websocket_bytes(&mut bytes);
-    debug!("{direction} data: {deserialized:?}");
 }

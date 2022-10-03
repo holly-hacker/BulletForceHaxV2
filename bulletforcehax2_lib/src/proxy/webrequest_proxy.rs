@@ -1,26 +1,32 @@
 use anyhow::Result;
+use futures_util::lock::Mutex;
 use hyper::body::to_bytes;
 use hyper::header::CONTENT_TYPE;
 use hyper::{Body, Client, Request, Response, Server};
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::str::FromStr;
+use std::sync::Arc;
 use tower::make::Shared;
 use tower::{Service, ServiceBuilder, ServiceExt};
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::decompression::DecompressionLayer;
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, trace, warn};
 
-pub async fn block_on_server() {
+use crate::hax::HaxState;
+
+pub async fn block_on_server(shared_state: Arc<Mutex<HaxState>>) {
     let addr = SocketAddr::from(([127, 0, 0, 1], 48897));
 
+    let state = shared_state.clone();
     let service = ServiceBuilder::new()
         .layer(CatchPanicLayer::new())
         .layer(CompressionLayer::new())
         .layer(CorsLayer::permissive())
-        .service_fn(web_request_proxy_service);
+        // .service_fn(web_request_proxy_service)
+        .service_fn(move |req| web_request_proxy_service(req, state.clone()));
 
     let server = Server::bind(&addr).serve(Shared::new(service));
 
@@ -32,8 +38,11 @@ pub async fn block_on_server() {
 }
 
 #[tracing::instrument(name = "WebRequestProxy", level = "info", skip_all, fields(uri = req.uri().query().unwrap_or("")))]
-async fn web_request_proxy_service(req: Request<Body>) -> Result<Response<Body>, Infallible> {
-    match web_request_proxy(req).await {
+async fn web_request_proxy_service(
+    req: Request<Body>,
+    state: Arc<Mutex<HaxState>>,
+) -> Result<Response<Body>, Infallible> {
+    match web_request_proxy(req, state).await {
         Ok(r) => Ok(r),
         Err(e) => {
             error!("Error result while handling proxied request {e:?}");
@@ -45,7 +54,10 @@ async fn web_request_proxy_service(req: Request<Body>) -> Result<Response<Body>,
     }
 }
 
-async fn web_request_proxy(req: Request<Body>) -> anyhow::Result<Response<Body>> {
+async fn web_request_proxy(
+    req: Request<Body>,
+    state: Arc<Mutex<HaxState>>,
+) -> anyhow::Result<Response<Body>> {
     debug!("Received {} request", req.method());
     let (parts_req, body) = req.into_parts();
 
@@ -68,7 +80,8 @@ async fn web_request_proxy(req: Request<Body>) -> anyhow::Result<Response<Body>>
 
     let mut body_bytes = to_bytes(body).await?.to_vec();
     if matches!(parts_req.method.as_str(), "GET" | "POST") {
-        let request_hook_res = request_hook(&proxied_uri, &mut body_bytes);
+        let request_hook_res =
+            HaxState::webrequest_hook_onrequest(state.clone(), &proxied_uri, &mut body_bytes);
         if let Err(error) = request_hook_res {
             error!("Error during request hook: {error}");
         }
@@ -106,7 +119,11 @@ async fn web_request_proxy(req: Request<Body>) -> anyhow::Result<Response<Body>>
                     body_bytes.len()
                 );
 
-                let request_hook_res = response_hook(&proxied_uri, &mut body_bytes);
+                let request_hook_res = HaxState::webrequest_hook_onresponse(
+                    state.clone(),
+                    &proxied_uri,
+                    &mut body_bytes,
+                );
                 if let Err(error) = request_hook_res {
                     error!("Error during request hook: {error}");
                 }
@@ -131,21 +148,4 @@ async fn web_request_proxy(req: Request<Body>) -> anyhow::Result<Response<Body>>
                 .body(format!("Error: {error}").into())?)
         }
     }
-}
-
-#[allow(clippy::ptr_arg)]
-fn request_hook(_url: &hyper::Uri, _bytes: &mut Vec<u8>) -> Result<()> {
-    Ok(())
-}
-
-fn response_hook(url: &hyper::Uri, bytes: &mut Vec<u8>) -> Result<()> {
-    #[allow(clippy::single_match)]
-    match url.path() {
-        "/OnlineAccountSystem/get-promotional-multipliers.php" => {
-            *bytes = r#"{"credsMult":2,"xpMult":2}"#.into();
-            info!("Rewrote promotional multiplier");
-        }
-        _ => (),
-    }
-    Ok(())
 }

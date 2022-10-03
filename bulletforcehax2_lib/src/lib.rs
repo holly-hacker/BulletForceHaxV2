@@ -1,4 +1,4 @@
 pub mod hax;
-pub mod version_scraper;
-
+mod hax_impl;
 pub(crate) mod proxy;
+pub mod version_scraper;

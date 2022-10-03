@@ -34,8 +34,9 @@ impl BulletForceHax {
             panic!("webrequest proxy is already enabled");
         }
 
+        let state = self.state.clone();
         tokio::spawn(async move {
-            crate::proxy::webrequest_proxy::block_on_server().await;
+            crate::proxy::webrequest_proxy::block_on_server(state).await;
         });
 
         self.webrequest_proxy = Some(());
@@ -49,9 +50,10 @@ impl BulletForceHax {
 
         let (new_connection_send, new_connection_recv) = tokio::sync::mpsc::channel(4);
 
+        let state = self.state.clone();
         tokio::spawn(async move {
             // start the proxy
-            crate::proxy::websocket_proxy::block_on_server(Some(new_connection_send)).await
+            crate::proxy::websocket_proxy::block_on_server(new_connection_send, state).await
         });
 
         let state = self.state.clone();
@@ -76,7 +78,7 @@ impl BulletForceHax {
                     let state = state.clone();
                     {
                         let mut locked_state = state.lock().await;
-                        if let Some(_) = locked_state.lobby_socket {
+                        if locked_state.lobby_socket.is_some() {
                             warn!("lobby socket connection created while one already existed! did it not get cleared correctly?");
                         }
                         locked_state.lobby_socket = Some(conn);
@@ -107,7 +109,7 @@ impl BulletForceHax {
                     let state = state.clone();
                     {
                         let mut locked_state = state.lock().await;
-                        if let Some(_) = locked_state.gameplay_socket {
+                        if locked_state.gameplay_socket.is_some() {
                             warn!("gameplay socket connection created while one already existed! did it not get cleared correctly?");
                         }
                         locked_state.gameplay_socket = Some(conn);
