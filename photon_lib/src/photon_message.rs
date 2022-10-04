@@ -5,11 +5,11 @@
 // disable this lint for just derive attributes, so we disable it for the entire file.
 #![allow(clippy::derive_hash_xor_eq)]
 
-use bytes::Buf;
+use bytes::{Buf, BufMut};
 use derivative::Derivative;
 use indexmap::IndexMap;
 
-use crate::{check_remaining, photon_data_type::PhotonDataType, ParseError};
+use crate::{check_remaining, photon_data_type::PhotonDataType, ReadError, WriteError};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum PhotonMessage {
@@ -37,9 +37,9 @@ pub enum PhotonMessage {
 }
 
 impl PhotonMessage {
-    pub fn from_websocket_bytes(data: &mut impl Buf) -> Result<PhotonMessage, ParseError> {
+    pub fn from_websocket_bytes(data: &mut impl Buf) -> Result<PhotonMessage, ReadError> {
         if data.remaining() < 1 {
-            return Err(ParseError::NotEnoughBytesLeft);
+            return Err(ReadError::NotEnoughBytesLeft);
         }
 
         let magic_number = data.get_u8();
@@ -52,14 +52,14 @@ impl PhotonMessage {
                 Ok(PhotonMessage::from_bytes_f3(data)?)
             }
             0xF0 => Ok(PhotonMessage::PingResult(PingResult::from_bytes(data)?)),
-            _ => Err(ParseError::InvalidMagicNumber(magic_number)),
+            _ => Err(ReadError::InvalidMagicNumber(magic_number)),
         }
     }
 
     /// parse a message that uses magic number 0xF3
-    fn from_bytes_f3(data: &mut impl Buf) -> Result<Self, ParseError> {
+    fn from_bytes_f3(data: &mut impl Buf) -> Result<Self, ReadError> {
         if data.remaining() < 2 {
-            return Err(ParseError::NotEnoughBytesLeft);
+            return Err(ReadError::NotEnoughBytesLeft);
         }
 
         let (msg_type, is_encrypted) = {
@@ -68,7 +68,7 @@ impl PhotonMessage {
         };
 
         if is_encrypted {
-            return Err(ParseError::Unimplemented("encryption"));
+            return Err(ReadError::Unimplemented("encryption"));
         }
 
         match msg_type {
@@ -96,7 +96,61 @@ impl PhotonMessage {
             9 => Ok(PhotonMessage::RawMessage(
                 data.copy_to_bytes(data.remaining()).to_vec(),
             )),
-            _ => Err(ParseError::UnknownMessageType(msg_type)),
+            _ => Err(ReadError::UnknownMessageType(msg_type)),
+        }
+    }
+
+    pub fn to_websocket_bytes(&self, buf: &mut impl BufMut) -> Result<(), WriteError> {
+        if let Some(type_byte) = self.get_type_byte() {
+            debug_assert!(!matches!(self, PhotonMessage::PingResult(_)));
+
+            buf.put_u8(0xF3); // magic byte
+            buf.put_u8(type_byte); // message type | is_encrypted
+            self.to_bytes_without_type_byte(buf)?;
+        } else {
+            debug_assert!(matches!(self, PhotonMessage::PingResult(_)));
+
+            buf.put_u8(0xF0); // magic byte
+            self.to_bytes_without_type_byte(buf)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn to_bytes_without_type_byte(&self, buf: &mut impl BufMut) -> Result<(), WriteError> {
+        match self {
+            PhotonMessage::InitResponse => {
+                buf.put_u8(0);
+            }
+            PhotonMessage::OperationRequest(x) => x.to_bytes(buf)?,
+            PhotonMessage::OperationResponse(x) => x.to_bytes(buf)?,
+            PhotonMessage::EventData(x) => x.to_bytes(buf)?,
+            PhotonMessage::DisconnectMessage(x) => x.to_bytes(buf)?,
+            PhotonMessage::InternalOperationRequest(x) => x.to_bytes(buf)?,
+            PhotonMessage::InternalOperationResponse(x) => x.to_bytes(buf)?,
+            PhotonMessage::Message(x) => x.to_bytes(buf)?,
+            PhotonMessage::RawMessage(x) => {
+                // NOTE: this does net seem right...
+                buf.put_slice(x);
+            }
+            PhotonMessage::PingResult(x) => x.to_bytes(buf)?,
+        }
+
+        Ok(())
+    }
+
+    pub fn get_type_byte(&self) -> Option<u8> {
+        match self {
+            PhotonMessage::InitResponse => Some(1),
+            PhotonMessage::OperationRequest(_) => Some(2),
+            PhotonMessage::OperationResponse(_) => Some(3),
+            PhotonMessage::EventData(_) => Some(4),
+            PhotonMessage::DisconnectMessage(_) => Some(5),
+            PhotonMessage::InternalOperationRequest(_) => Some(6),
+            PhotonMessage::InternalOperationResponse(_) => Some(7),
+            PhotonMessage::Message(_) => Some(8),
+            PhotonMessage::RawMessage(_) => Some(9),
+            PhotonMessage::PingResult(_) => None,
         }
     }
 }
@@ -108,15 +162,18 @@ pub struct PingResult {
 }
 
 impl PingResult {
-    pub fn from_bytes(data: &mut impl Buf) -> Result<Self, ParseError> {
-        if data.remaining() < 8 {
-            Err(ParseError::NotEnoughBytesLeft)
-        } else {
-            Ok(Self {
-                server_sent_time: data.get_i32(),
-                client_sent_time: data.get_i32(),
-            })
-        }
+    pub fn from_bytes(data: &mut impl Buf) -> Result<Self, ReadError> {
+        check_remaining!(data, 8);
+        Ok(Self {
+            server_sent_time: data.get_i32(),
+            client_sent_time: data.get_i32(),
+        })
+    }
+
+    pub fn to_bytes(&self, buf: &mut impl BufMut) -> Result<(), WriteError> {
+        buf.put_i32(self.server_sent_time);
+        buf.put_i32(self.client_sent_time);
+        Ok(())
     }
 }
 
@@ -129,7 +186,7 @@ pub struct OperationRequest {
 }
 
 impl OperationRequest {
-    pub fn from_bytes(bytes: &mut impl Buf) -> Result<Self, ParseError> {
+    pub fn from_bytes(bytes: &mut impl Buf) -> Result<Self, ReadError> {
         check_remaining!(bytes, 1);
         let operation_code = bytes.get_u8();
 
@@ -138,6 +195,12 @@ impl OperationRequest {
             operation_code,
             parameters,
         })
+    }
+
+    pub fn to_bytes(&self, buf: &mut impl BufMut) -> Result<(), WriteError> {
+        buf.put_u8(self.operation_code);
+        serialize_parameter_dictionary(buf, &self.parameters)?;
+        Ok(())
     }
 }
 
@@ -152,7 +215,7 @@ pub struct OperationResponse {
 }
 
 impl OperationResponse {
-    pub fn from_bytes(bytes: &mut impl Buf) -> Result<Self, ParseError> {
+    pub fn from_bytes(bytes: &mut impl Buf) -> Result<Self, ReadError> {
         check_remaining!(bytes, 3);
         let operation_code = bytes.get_u8();
         let return_code = bytes.get_i16();
@@ -160,7 +223,7 @@ impl OperationResponse {
             PhotonDataType::String(s) => Some(s),
             PhotonDataType::Null => None,
             _ => {
-                return Err(ParseError::UnexpectedData(
+                return Err(ReadError::UnexpectedData(
                     "expected string or null in operation response debug message",
                 ))
             }
@@ -174,6 +237,19 @@ impl OperationResponse {
             parameters,
         })
     }
+
+    pub fn to_bytes(&self, buf: &mut impl BufMut) -> Result<(), WriteError> {
+        buf.put_u8(self.operation_code);
+        buf.put_i16(self.return_code);
+        if let Some(msg) = &self.debug_message {
+            // yuck, needless clone
+            PhotonDataType::String(msg.clone()).to_bytes(buf)?;
+        } else {
+            PhotonDataType::Null.to_bytes(buf)?;
+        }
+        serialize_parameter_dictionary(buf, &self.parameters)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Derivative)]
@@ -186,12 +262,18 @@ pub struct EventData {
 }
 
 impl EventData {
-    pub fn from_bytes(bytes: &mut impl Buf) -> Result<Self, ParseError> {
+    pub fn from_bytes(bytes: &mut impl Buf) -> Result<Self, ReadError> {
         check_remaining!(bytes, 1);
         let code = bytes.get_u8();
 
         let parameters = deserialize_parameter_dictionary(bytes)?;
         Ok(Self { code, parameters })
+    }
+
+    pub fn to_bytes(&self, buf: &mut impl BufMut) -> Result<(), WriteError> {
+        buf.put_u8(self.code);
+        serialize_parameter_dictionary(buf, &self.parameters)?;
+        Ok(())
     }
 }
 
@@ -205,14 +287,14 @@ pub struct DisconnectMessage {
 }
 
 impl DisconnectMessage {
-    pub fn from_bytes(bytes: &mut impl Buf) -> Result<Self, ParseError> {
+    pub fn from_bytes(bytes: &mut impl Buf) -> Result<Self, ReadError> {
         check_remaining!(bytes, 2);
         let code = bytes.get_i16();
         let debug_message = match PhotonDataType::from_bytes(bytes)? {
             PhotonDataType::String(s) => Some(s),
             PhotonDataType::Null => None,
             _ => {
-                return Err(ParseError::UnexpectedData(
+                return Err(ReadError::UnexpectedData(
                     "expected string or null in operation response debug message",
                 ))
             }
@@ -225,11 +307,23 @@ impl DisconnectMessage {
             parameters,
         })
     }
+
+    pub fn to_bytes(&self, buf: &mut impl BufMut) -> Result<(), WriteError> {
+        buf.put_i16(self.code);
+        if let Some(msg) = &self.debug_message {
+            // yuck, needless clone
+            PhotonDataType::String(msg.clone()).to_bytes(buf)?;
+        } else {
+            PhotonDataType::Null.to_bytes(buf)?;
+        }
+        serialize_parameter_dictionary(buf, &self.parameters)?;
+        Ok(())
+    }
 }
 
 fn deserialize_parameter_dictionary(
     bytes: &mut impl Buf,
-) -> Result<IndexMap<u8, PhotonDataType>, ParseError> {
+) -> Result<IndexMap<u8, PhotonDataType>, ReadError> {
     check_remaining!(bytes, 2);
     let params_count = bytes.get_i16();
     let mut parameters = IndexMap::with_capacity(params_count as usize);
@@ -238,6 +332,24 @@ fn deserialize_parameter_dictionary(
         parameters.insert(bytes.get_u8(), PhotonDataType::from_bytes(bytes)?);
     }
     Ok(parameters)
+}
+
+fn serialize_parameter_dictionary(
+    buf: &mut impl BufMut,
+    map: &IndexMap<u8, PhotonDataType>,
+) -> Result<(), WriteError> {
+    if map.len() > i16::MAX as usize {
+        return Err(WriteError::ValueTooLarge("Custom Data"));
+    }
+
+    buf.put_i16(map.len() as i16);
+
+    for (k, v) in map {
+        buf.put_u8(*k);
+        v.to_bytes(buf)?;
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -252,15 +364,27 @@ mod tests {
         ($name:ident, $hex:literal, $val:expr) => {
             paste::paste! {
                 #[test]
-            fn [<deserialize_ $name>]() {
-                let mut bytes =
-                    bytes::Bytes::from(hex::decode($hex).expect("valid hex data in test"));
-                let val = $val;
+                fn [<deserialize_ $name>]() {
+                    let mut bytes: &[u8] = &hex::decode($hex).expect("valid hex data in test");
+                    let val = $val;
 
-                let deserialized = super::PhotonMessage::from_websocket_bytes(&mut bytes).unwrap();
+                    let deserialized = super::PhotonMessage::from_websocket_bytes(&mut bytes).unwrap();
 
-                assert_eq!(deserialized, val);
-            }
+                    assert_eq!(deserialized, val);
+                }
+
+                #[test]
+                fn [<serialize_ $name>]() {
+                    use super::PhotonMessage;
+
+                    let bytes = hex::decode($hex).expect("valid hex data in test");
+                    let val = $val;
+
+                    let mut buf = vec![];
+                    val.to_websocket_bytes(&mut buf).unwrap();
+
+                    assert_eq!(buf, bytes);
+                }
             }
         };
     }
