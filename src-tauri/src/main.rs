@@ -103,6 +103,7 @@ async fn main() {
 
     // create tauri app and block on it
     // when the tauri app closes, exit from main
+    #[allow(clippy::single_match)]
     tauri::Builder::default()
         .setup(|app| {
             app.wry_plugin(tauri_egui::EguiPluginBuilder::new(app.handle()));
@@ -126,8 +127,8 @@ async fn main() {
                 info!("Opening hax ui");
                 app.state::<tauri_egui::EguiPluginHandle>()
                     .create_window(
-                        "login".to_string(),
-                        Box::new(move |_cc| Box::new(BulletForceHaxMenu::new(state.clone()))),
+                        "hax".to_string(),
+                        Box::new(move |_cc| Box::new(BulletForceHaxMenu::new(state))),
                         "Hax Menu".into(),
                         tauri_egui::eframe::NativeOptions::default(),
                     )
