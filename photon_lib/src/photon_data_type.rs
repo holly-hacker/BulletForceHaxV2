@@ -7,7 +7,7 @@
 
 use std::cmp::Ordering;
 
-use bytes::{Buf, Bytes};
+use bytes::Buf;
 use derivative::Derivative;
 use indexmap::IndexMap;
 use ordered_float::OrderedFloat;
@@ -74,7 +74,7 @@ pub enum PhotonDataType {
 }
 
 impl PhotonDataType {
-    pub fn from_bytes(bytes: &mut Bytes) -> Result<PhotonDataType, ParseError> {
+    pub fn from_bytes(bytes: &mut impl Buf) -> Result<PhotonDataType, ParseError> {
         check_remaining!(bytes, 1);
 
         let data_type = bytes.get_u8();
@@ -82,7 +82,7 @@ impl PhotonDataType {
     }
 
     pub fn from_bytes_with_type(
-        bytes: &mut Bytes,
+        bytes: &mut impl Buf,
         data_type: u8,
     ) -> Result<PhotonDataType, ParseError> {
         match data_type {
@@ -241,7 +241,7 @@ impl PhotonDataType {
                 check_remaining!(bytes, 4);
                 let len = bytes.get_i32();
                 if len < 0 {
-                    return Err(ParseError::UnexpectedData("byte[] lenght less than 0"));
+                    return Err(ParseError::UnexpectedData("byte[] length less than 0"));
                 }
 
                 check_remaining!(bytes, len as usize);
@@ -300,8 +300,8 @@ mod tests {
             paste::paste! {
                 #[test]
                 fn [<deserialize_ $name>]() {
-                    let mut bytes =
-                        bytes::Bytes::from(hex::decode($hex).expect("valid hex data in test"));
+                    let mut bytes: &[u8] =
+                        &hex::decode($hex).expect("valid hex data in test");
                     let val = $val;
 
                     let deserialized = super::PhotonDataType::from_bytes(&mut bytes).unwrap();

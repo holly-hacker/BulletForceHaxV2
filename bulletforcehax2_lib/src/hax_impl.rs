@@ -27,8 +27,7 @@ impl HaxState {
 
     #[allow(clippy::ptr_arg)]
     pub fn websocket_hook(_hax: Arc<Mutex<Self>>, data: &mut Vec<u8>, direction: &'static str) {
-        let mut bytes = bytes::Bytes::copy_from_slice(data);
-        let deserialized = PhotonMessage::from_websocket_bytes(&mut bytes);
+        let deserialized = PhotonMessage::from_websocket_bytes(&mut data.as_slice());
         debug!("{direction} data: {deserialized:?}");
     }
 }

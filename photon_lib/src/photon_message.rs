@@ -5,7 +5,7 @@
 // disable this lint for just derive attributes, so we disable it for the entire file.
 #![allow(clippy::derive_hash_xor_eq)]
 
-use bytes::{Buf, Bytes};
+use bytes::Buf;
 use derivative::Derivative;
 use indexmap::IndexMap;
 
@@ -37,7 +37,7 @@ pub enum PhotonMessage {
 }
 
 impl PhotonMessage {
-    pub fn from_websocket_bytes(data: &mut Bytes) -> Result<PhotonMessage, ParseError> {
+    pub fn from_websocket_bytes(data: &mut impl Buf) -> Result<PhotonMessage, ParseError> {
         if data.remaining() < 1 {
             return Err(ParseError::NotEnoughBytesLeft);
         }
@@ -57,7 +57,7 @@ impl PhotonMessage {
     }
 
     /// parse a message that uses magic number 0xF3
-    fn from_bytes_f3(data: &mut Bytes) -> Result<Self, ParseError> {
+    fn from_bytes_f3(data: &mut impl Buf) -> Result<Self, ParseError> {
         if data.remaining() < 2 {
             return Err(ParseError::NotEnoughBytesLeft);
         }
@@ -108,7 +108,7 @@ pub struct PingResult {
 }
 
 impl PingResult {
-    pub fn from_bytes(data: &mut Bytes) -> Result<Self, ParseError> {
+    pub fn from_bytes(data: &mut impl Buf) -> Result<Self, ParseError> {
         if data.remaining() < 8 {
             Err(ParseError::NotEnoughBytesLeft)
         } else {
@@ -129,7 +129,7 @@ pub struct OperationRequest {
 }
 
 impl OperationRequest {
-    pub fn from_bytes(bytes: &mut Bytes) -> Result<Self, ParseError> {
+    pub fn from_bytes(bytes: &mut impl Buf) -> Result<Self, ParseError> {
         check_remaining!(bytes, 1);
         let operation_code = bytes.get_u8();
 
@@ -152,7 +152,7 @@ pub struct OperationResponse {
 }
 
 impl OperationResponse {
-    pub fn from_bytes(bytes: &mut Bytes) -> Result<Self, ParseError> {
+    pub fn from_bytes(bytes: &mut impl Buf) -> Result<Self, ParseError> {
         check_remaining!(bytes, 3);
         let operation_code = bytes.get_u8();
         let return_code = bytes.get_i16();
@@ -186,7 +186,7 @@ pub struct EventData {
 }
 
 impl EventData {
-    pub fn from_bytes(bytes: &mut Bytes) -> Result<Self, ParseError> {
+    pub fn from_bytes(bytes: &mut impl Buf) -> Result<Self, ParseError> {
         check_remaining!(bytes, 1);
         let code = bytes.get_u8();
 
@@ -205,7 +205,7 @@ pub struct DisconnectMessage {
 }
 
 impl DisconnectMessage {
-    pub fn from_bytes(bytes: &mut Bytes) -> Result<Self, ParseError> {
+    pub fn from_bytes(bytes: &mut impl Buf) -> Result<Self, ParseError> {
         check_remaining!(bytes, 2);
         let code = bytes.get_i16();
         let debug_message = match PhotonDataType::from_bytes(bytes)? {
@@ -228,7 +228,7 @@ impl DisconnectMessage {
 }
 
 fn deserialize_parameter_dictionary(
-    bytes: &mut Bytes,
+    bytes: &mut impl Buf,
 ) -> Result<IndexMap<u8, PhotonDataType>, ParseError> {
     check_remaining!(bytes, 2);
     let params_count = bytes.get_i16();
