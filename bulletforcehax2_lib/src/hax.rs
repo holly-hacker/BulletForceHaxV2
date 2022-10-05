@@ -25,6 +25,8 @@ pub struct BulletForceHax {
 pub struct HaxState {
     pub lobby_socket: Option<WebSocketProxy>,
     pub gameplay_socket: Option<WebSocketProxy>,
+
+    pub lobby_spoofed_max_players: Option<u8>,
 }
 
 impl BulletForceHax {

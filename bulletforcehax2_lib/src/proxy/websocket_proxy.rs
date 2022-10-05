@@ -192,7 +192,10 @@ fn start_proxy_task(
 
                 // TODO: install proper hook
                 if let Message::Binary(b) = &mut message {
-                    HaxState::websocket_hook(shared_state.clone(), b, direction);
+                    let result = HaxState::websocket_hook(shared_state.clone(), b, direction);
+                    if let Err(e) = result {
+                        error!("Error during websocket hook handler: {}", e);
+                    }
                 }
 
                 let send_result = sink.lock().await.send(message).await;

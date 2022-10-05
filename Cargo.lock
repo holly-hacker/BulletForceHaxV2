@@ -273,6 +273,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
+ "futures",
  "futures-util",
  "hyper",
  "hyper-tls",
@@ -2568,6 +2569,7 @@ dependencies = [
  "ordered-float",
  "paste",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]

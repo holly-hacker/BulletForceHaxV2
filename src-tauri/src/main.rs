@@ -51,7 +51,7 @@ fn bulletforce_handler(
 #[tokio::main]
 async fn main() {
     // initialize logging
-    let default_logging_level = tracing::Level::INFO;
+    let default_logging_level = tracing::Level::DEBUG;
     let subscriber = tracing_subscriber::fmt()
         .with_max_level(default_logging_level)
         .with_timer(tracing_subscriber::fmt::time::uptime())

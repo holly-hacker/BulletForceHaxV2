@@ -1,6 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use bulletforcehax2_lib::hax::HaxState;
+use egui::Slider;
 use futures_util::lock::Mutex;
 
 pub struct BulletForceHaxMenu {
@@ -21,8 +22,10 @@ impl eframe::App for BulletForceHaxMenu {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("hax menu goes here :D");
 
-            if true {
-                let ret = futures::executor::block_on(self.hax.lock());
+            let mut ret = futures::executor::block_on(self.hax.lock());
+
+            #[cfg(debug_assertions)]
+            {
                 ui.label(format!("lobby socket: {}", ret.lobby_socket.is_some()));
                 ui.label(format!(
                     "gameplay socket: {}",
@@ -30,6 +33,23 @@ impl eframe::App for BulletForceHaxMenu {
                 ));
             }
 
+            if ui
+                .checkbox(
+                    &mut ret.lobby_spoofed_max_players.is_some(),
+                    "spoof max players",
+                )
+                .changed()
+            {
+                ret.lobby_spoofed_max_players = match ret.lobby_spoofed_max_players {
+                    Some(_) => None,
+                    None => Some(10),
+                }
+            }
+            if let Some(players) = &mut ret.lobby_spoofed_max_players {
+                ui.add(Slider::new(players, 0..=31));
+            }
+
+            drop(ret);
             if let Some(fps) = frame.info().cpu_usage {
                 ui.label(format!("cpu usage {:?}", Duration::from_secs_f32(fps)));
             }
