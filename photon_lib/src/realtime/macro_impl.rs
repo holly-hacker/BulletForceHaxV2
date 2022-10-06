@@ -1,11 +1,14 @@
 macro_rules! impl_hashtable {
-    ($type_name:ident {
-        $(
-            #[$photon_key:expr => $photon_value:path]
-            $field_name:ident: $field_type:ty,
-        )+
-    }) => {
-        #[derive(Debug)]
+    (
+        $(#[$attr:meta])*
+        $type_name:ident {
+            $(
+                #[$photon_key:expr => $photon_value:path]
+                $field_name:ident: $field_type:ty,
+            )+
+        }
+    ) => {
+        $(#[$attr])*
         pub struct $type_name {
             $(
                 pub $field_name: Option<$field_type>,
@@ -18,7 +21,9 @@ macro_rules! impl_hashtable {
             fn from_hashtable(properties: &mut indexmap::IndexMap<PhotonDataType, PhotonDataType>) -> Self {
                 $type_name {
                     $(
-                        $field_name: match properties.remove(&$photon_key) {
+                        // NOTE: we need to use `shift_remove` to retain order for custom_properties later
+                        // this may not actually be important, but it allows types converted both ways and be identical
+                        $field_name: match properties.shift_remove(&$photon_key) {
                             Some($photon_value(b)) => Some(b),
                             Some(_) => {
                                 tracing::warn!("Unexpected data type");

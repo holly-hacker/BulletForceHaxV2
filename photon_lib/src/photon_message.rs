@@ -177,7 +177,7 @@ impl PingResult {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Derivative)]
+#[derive(Debug, Clone, PartialEq, Eq, Derivative)]
 #[derivative(Hash)]
 pub struct OperationRequest {
     pub operation_code: u8,
@@ -204,7 +204,7 @@ impl OperationRequest {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Derivative)]
+#[derive(Debug, Clone, PartialEq, Eq, Derivative)]
 #[derivative(Hash)]
 pub struct OperationResponse {
     pub operation_code: u8,
@@ -252,7 +252,7 @@ impl OperationResponse {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Derivative)]
+#[derive(Debug, Clone, PartialEq, Eq, Derivative)]
 #[derivative(Hash)]
 pub struct EventData {
     pub code: u8,

@@ -19,7 +19,7 @@ use crate::{
 };
 
 /// A serialized .NET object
-#[derive(Debug, Default, PartialEq, Eq, Derivative)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Derivative)]
 #[derivative(Hash)]
 pub enum PhotonDataType {
     #[default]
