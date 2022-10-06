@@ -356,9 +356,8 @@ fn serialize_parameter_dictionary(
 mod tests {
     use indexmap::indexmap;
 
-    use crate::{photon_data_type::PhotonDataType, photon_message::*};
-
     use super::PhotonMessage;
+    use crate::{photon_data_type::PhotonDataType, photon_message::*};
 
     macro_rules! test_message {
         ($name:ident, $hex:literal, $val:expr) => {

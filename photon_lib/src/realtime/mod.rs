@@ -5,9 +5,8 @@ pub mod constants;
 use indexmap::IndexMap;
 use tracing::warn;
 
-use crate::photon_data_type::PhotonDataType;
-
 use self::constants::game_property_key;
+use crate::photon_data_type::PhotonDataType;
 
 pub trait EventDataBased {
     fn from_hashtable(properties: &mut IndexMap<PhotonDataType, PhotonDataType>) -> Self;

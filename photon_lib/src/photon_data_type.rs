@@ -12,8 +12,6 @@ use derivative::Derivative;
 use indexmap::IndexMap;
 use ordered_float::OrderedFloat;
 
-// use std::hash::Hash;
-
 use crate::{
     check_remaining,
     photon_message::{EventData, OperationRequest, OperationResponse},
@@ -462,9 +460,8 @@ impl PhotonDataType {
 
 #[cfg(test)]
 mod tests {
-    use crate::photon_message::*;
-
     use super::PhotonDataType;
+    use crate::photon_message::*;
 
     macro_rules! generate_test {
         ($name: ident, $val: expr, $hex: expr) => {
