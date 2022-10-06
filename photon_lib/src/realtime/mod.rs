@@ -9,12 +9,12 @@ use indexmap::IndexMap;
 use self::constants::game_property_key;
 use crate::photon_data_type::PhotonDataType;
 
-pub trait EventDataBased {
-    fn from_hashtable(properties: &mut IndexMap<PhotonDataType, PhotonDataType>) -> Self;
-    fn into_hashtable(self, map: &mut IndexMap<PhotonDataType, PhotonDataType>);
+pub trait PhotonMapConversion {
+    fn from_map(properties: &mut IndexMap<PhotonDataType, PhotonDataType>) -> Self;
+    fn into_map(self, map: &mut IndexMap<PhotonDataType, PhotonDataType>);
 }
 
-impl_hashtable! {
+impl_photon_map_conversion! {
     #[derive(Debug, Clone, PartialEq, Eq)]
     RoomInfo {
         #[PhotonDataType::Byte(game_property_key::REMOVED) => PhotonDataType::Boolean]
@@ -58,7 +58,7 @@ mod tests {
     use ordered_float::OrderedFloat;
 
     use crate::photon_data_type::PhotonDataType;
-    use crate::realtime::{EventDataBased, RoomInfo};
+    use crate::realtime::{PhotonMapConversion, RoomInfo};
 
     use super::constants::game_property_key;
 
@@ -130,12 +130,12 @@ mod tests {
 
         {
             let mut deserialized = IndexMap::new();
-            room_info.clone().into_hashtable(&mut deserialized);
+            room_info.clone().into_map(&mut deserialized);
             assert_eq!(deserialized, photon_map);
         }
 
         {
-            let serialized = RoomInfo::from_hashtable(&mut photon_map.clone());
+            let serialized = RoomInfo::from_map(&mut photon_map.clone());
             assert_eq!(serialized, room_info);
         }
     }

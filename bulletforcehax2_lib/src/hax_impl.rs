@@ -6,7 +6,7 @@ use photon_lib::{
     photon_message::PhotonMessage,
     realtime::{
         constants::{event_code, parameter_code},
-        EventDataBased, RoomInfo,
+        PhotonMapConversion, RoomInfo,
     },
 };
 use tracing::{info, trace};
@@ -55,7 +55,7 @@ impl HaxState {
                         ) = (k, v)
                         {
                             // tracing::debug!("Before: {props:?}");
-                            let mut room_info = RoomInfo::from_hashtable(props);
+                            let mut room_info = RoomInfo::from_map(props);
                             info!("room {game_name}: {room_info:?}");
                             if room_info.removed != Some(true) {
                                 if let Some(new_max_players) = spoofed_max_players {
@@ -63,7 +63,7 @@ impl HaxState {
                                     room_info.max_players = Some(new_max_players);
                                 }
                             }
-                            room_info.into_hashtable(props);
+                            room_info.into_map(props);
                             // tracing::debug!("After: {props:?}");
                         }
                     }
