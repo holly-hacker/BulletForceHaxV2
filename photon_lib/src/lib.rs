@@ -33,7 +33,7 @@ pub enum ReadError {
     Unimplemented(&'static str),
 }
 
-/// An error that can occur when parsing a message
+/// An error that can occur when writing a message
 #[derive(Debug, Error)]
 pub enum WriteError {
     // TODO: NotEnoughBytesLeft error, we currently panic if we write to a fixed-size buffer
