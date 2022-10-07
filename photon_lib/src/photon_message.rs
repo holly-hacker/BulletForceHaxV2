@@ -11,9 +11,13 @@ use indexmap::IndexMap;
 
 use crate::{check_remaining, photon_data_type::PhotonDataType, ReadError, WriteError};
 
+/// Describes a low-level message that comes in or goes out over the wire.
+///
+/// See also: `ExitGames.Client.Photon.EgMessageType` in Photon3Unity3D.dll.
 #[derive(Debug, PartialEq, Eq)]
 pub enum PhotonMessage {
-    // NOTE: 0 is most likely Init packet, but websocket does not seem to use it
+    /// Message type 0x00
+    Init,
     /// Message type 0x01, indicates that connection has been established.
     InitResponse,
     /// Message type 0x02
@@ -119,6 +123,9 @@ impl PhotonMessage {
 
     pub fn to_bytes_without_type_byte(&self, buf: &mut impl BufMut) -> Result<(), WriteError> {
         match self {
+            PhotonMessage::Init => {
+                return Err(WriteError::Unimplemented("Init message serialization"))
+            }
             PhotonMessage::InitResponse => {
                 buf.put_u8(0);
             }
@@ -141,6 +148,7 @@ impl PhotonMessage {
 
     pub fn get_type_byte(&self) -> Option<u8> {
         match self {
+            PhotonMessage::Init => Some(0),
             PhotonMessage::InitResponse => Some(1),
             PhotonMessage::OperationRequest(_) => Some(2),
             PhotonMessage::OperationResponse(_) => Some(3),

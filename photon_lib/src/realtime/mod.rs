@@ -6,7 +6,7 @@ mod macro_impl;
 
 use indexmap::IndexMap;
 
-use self::constants::game_property_key;
+use self::constants::{actor_properties, game_property_key};
 use crate::photon_data_type::PhotonDataType;
 
 pub trait PhotonMapConversion {
@@ -14,6 +14,7 @@ pub trait PhotonMapConversion {
     fn into_map(self, map: &mut IndexMap<PhotonDataType, PhotonDataType>);
 }
 
+// NOTE: this macro adds a `custom_properties` field for remaining, string-keyed properties
 impl_photon_map_conversion! {
     #[derive(Debug, Clone, PartialEq, Eq)]
     RoomInfo {
@@ -50,6 +51,17 @@ impl_photon_map_conversion! {
         #[PhotonDataType::Byte(game_property_key::PLAYER_TTL) => PhotonDataType::Integer]
         player_ttl: i32,
     }
+
+    Player {
+        #[PhotonDataType::Byte(actor_properties::PLAYER_NAME) => PhotonDataType::String]
+        nickname: String,
+
+        #[PhotonDataType::Byte(actor_properties::USER_ID) => PhotonDataType::String]
+        user_id: String,
+
+        #[PhotonDataType::Byte(actor_properties::IS_INACTIVE) => PhotonDataType::Boolean]
+        is_inactive: bool,
+    }
 }
 
 #[cfg(test)]
@@ -80,52 +92,18 @@ mod tests {
                 "switchingmap".into() => PhotonDataType::Boolean(false),
                 "meanKD".into() => PhotonDataType::Float(OrderedFloat(0.72795415)),
                 "seasonID".into() => PhotonDataType::String("".into()),
-                "eventcode".into() => PhotonDataType::Integer(0),
-                "timesPlayingSameMatch".into() => PhotonDataType::Integer(1),
-                "averagerank".into() => PhotonDataType::Integer(14),
-                "dedicated".into() => PhotonDataType::Boolean(false),
-                "roomType".into() => PhotonDataType::Byte(0),
-                "password".into() => PhotonDataType::String("".into()),
-                "gameVersion".into() => PhotonDataType::String("1.89.1".into()),
-                "isDevMatch".into() => PhotonDataType::Boolean(false),
-                "meanRank".into() => PhotonDataType::Float(OrderedFloat(4.6666665)),
-                "gameID".into() => PhotonDataType::String("PC-leys2006_1665094204".into()),
-                "mapName".into() => PhotonDataType::String("Woods".into()),
-                "matchStarted".into() => PhotonDataType::Boolean(true),
-                "roomID".into() => PhotonDataType::String("PC-leys2006_1665094175".into()),
-                "storeID".into() => PhotonDataType::String("BALYZE_WEB".into()),
-                "modeName".into() => PhotonDataType::String("Team Deathmatch".into()),
-                "allowedweapons".into() => PhotonDataType::Array(vec![PhotonDataType::Integer(-1),PhotonDataType::Integer(-1),PhotonDataType::Integer(-1)]),
-                "roomName".into() => PhotonDataType::String("Beginner (#5625)".into()),
-                "hardcore".into() => PhotonDataType::Boolean(false)
+                "eventcode".into() => PhotonDataType::Integer(0)
             },
         };
 
         let photon_map = indexmap! {
-            PhotonDataType::Byte(game_property_key::MAX_PLAYERS) => PhotonDataType::Byte(15),
-            PhotonDataType::Byte(game_property_key::IS_OPEN) => PhotonDataType::Boolean(true),
-            PhotonDataType::Byte(game_property_key::PLAYER_COUNT) => PhotonDataType::Byte(3),
             PhotonDataType::String("switchingmap".into()) => PhotonDataType::Boolean(false),
+            PhotonDataType::Byte(game_property_key::MAX_PLAYERS) => PhotonDataType::Byte(15),
             PhotonDataType::String("meanKD".into()) => PhotonDataType::Float(OrderedFloat(0.72795415)),
+            PhotonDataType::Byte(game_property_key::IS_OPEN) => PhotonDataType::Boolean(true),
             PhotonDataType::String("seasonID".into()) => PhotonDataType::String("".into()),
-            PhotonDataType::String("eventcode".into()) => PhotonDataType::Integer(0),
-            PhotonDataType::String("timesPlayingSameMatch".into()) => PhotonDataType::Integer(1),
-            PhotonDataType::String("averagerank".into()) => PhotonDataType::Integer(14),
-            PhotonDataType::String("dedicated".into()) => PhotonDataType::Boolean(false),
-            PhotonDataType::String("roomType".into()) => PhotonDataType::Byte(0),
-            PhotonDataType::String("password".into()) => PhotonDataType::String("".into()),
-            PhotonDataType::String("gameVersion".into()) => PhotonDataType::String("1.89.1".into()),
-            PhotonDataType::String("isDevMatch".into()) => PhotonDataType::Boolean(false),
-            PhotonDataType::String("meanRank".into()) => PhotonDataType::Float(OrderedFloat(4.6666665)),
-            PhotonDataType::String("gameID".into()) => PhotonDataType::String("PC-leys2006_1665094204".into()),
-            PhotonDataType::String("mapName".into()) => PhotonDataType::String("Woods".into()),
-            PhotonDataType::String("matchStarted".into()) => PhotonDataType::Boolean(true),
-            PhotonDataType::String("roomID".into()) => PhotonDataType::String("PC-leys2006_1665094175".into()),
-            PhotonDataType::String("storeID".into()) => PhotonDataType::String("BALYZE_WEB".into()),
-            PhotonDataType::String("modeName".into()) => PhotonDataType::String("Team Deathmatch".into()),
-            PhotonDataType::String("allowedweapons".into()) => PhotonDataType::Array(vec![PhotonDataType::Integer(-1),PhotonDataType::Integer(-1),PhotonDataType::Integer(-1)]),
-            PhotonDataType::String("roomName".into()) => PhotonDataType::String("Beginner (#5625)".into()),
-            PhotonDataType::String("hardcore".into()) => PhotonDataType::Boolean(false),
+            PhotonDataType::Byte(game_property_key::PLAYER_COUNT) => PhotonDataType::Byte(3),
+            PhotonDataType::String("eventcode".into()) => PhotonDataType::Integer(0)
         };
 
         {
