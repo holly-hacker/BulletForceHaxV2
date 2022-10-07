@@ -3,6 +3,9 @@ pub mod photon_message;
 pub mod realtime;
 pub(crate) mod utils;
 
+pub use indexmap;
+pub use ordered_float;
+
 use thiserror::Error;
 
 // TODO: perhaps add info on where the error occured?

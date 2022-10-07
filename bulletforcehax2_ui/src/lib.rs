@@ -1,8 +1,16 @@
 use std::{sync::Arc, time::Duration};
 
 use bulletforcehax2_lib::hax::HaxState;
-use egui::Slider;
+use bulletforcehax2_lib::indexmap::indexmap;
 use futures_util::lock::Mutex;
+use photon_lib::{
+    photon_data_type::PhotonDataType,
+    photon_message::{EventData, PhotonMessage},
+    realtime::{
+        constants::{event_code, parameter_code},
+        PhotonMapConversion, RoomInfo,
+    },
+};
 
 pub struct BulletForceHaxMenu {
     hax: Arc<Mutex<HaxState>>,
@@ -22,34 +30,24 @@ impl eframe::App for BulletForceHaxMenu {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("hax menu goes here :D");
 
-            let mut ret = futures::executor::block_on(self.hax.lock());
+            let mut hax = futures::executor::block_on(self.hax.lock());
 
             #[cfg(debug_assertions)]
             {
-                ui.label(format!("lobby socket: {}", ret.lobby_socket.is_some()));
+                ui.label(format!("lobby socket: {}", hax.lobby_socket.is_some()));
                 ui.label(format!(
                     "gameplay socket: {}",
-                    ret.gameplay_socket.is_some()
+                    hax.gameplay_socket.is_some()
                 ));
             }
 
-            if ui
-                .checkbox(
-                    &mut ret.lobby_spoofed_max_players.is_some(),
-                    "spoof max players",
-                )
-                .changed()
-            {
-                ret.lobby_spoofed_max_players = match ret.lobby_spoofed_max_players {
-                    Some(_) => None,
-                    None => Some(10),
-                }
-            }
-            if let Some(players) = &mut ret.lobby_spoofed_max_players {
-                ui.add(Slider::new(players, 0..=31));
-            }
+            ui.add_space(16f32);
+            ui.heading("Lobby");
+            ui.checkbox(&mut hax.show_mobile_games, "Show mobile games");
 
-            drop(ret);
+            ui.add_space(16f32);
+
+            drop(hax);
             if let Some(fps) = frame.info().cpu_usage {
                 ui.label(format!("cpu usage {:?}", Duration::from_secs_f32(fps)));
             }
