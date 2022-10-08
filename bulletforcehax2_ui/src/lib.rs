@@ -38,6 +38,7 @@ impl eframe::App for BulletForceHaxMenu {
                 &mut hax.show_other_versions,
                 "Show games for other versions",
             );
+            ui.checkbox(&mut hax.strip_passwords, "Strip passwords");
             ui.add_space(16f32);
 
             #[cfg(debug_assertions)]

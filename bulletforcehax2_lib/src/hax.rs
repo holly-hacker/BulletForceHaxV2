@@ -34,6 +34,7 @@ pub struct HaxState {
     // features
     pub show_mobile_games: bool,
     pub show_other_versions: bool,
+    pub strip_passwords: bool,
 }
 
 impl BulletForceHax {

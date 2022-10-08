@@ -55,7 +55,7 @@ impl HaxState {
 
         if let Some((name, code)) = debug_info {
             debug!("{direction} {name} {code}");
-            debug!("{direction} data: {photon_message:?}");
+            trace!("{direction} data: {photon_message:?}");
         }
 
         // TODO: check if on lobby socket
@@ -84,9 +84,10 @@ impl HaxState {
             }
             PhotonMessage::EventData(event) => match event.code {
                 event_code::GAME_LIST | event_code::GAME_LIST_UPDATE => {
-                    let (show_mobile, show_all_versions, game_version) = {
+                    let (strip_passwords, show_mobile, show_all_versions, game_version) = {
                         let hax = futures::executor::block_on(hax.lock());
                         (
+                            hax.strip_passwords,
                             hax.show_mobile_games,
                             hax.show_other_versions,
                             hax.game_version.clone(),
@@ -128,6 +129,9 @@ impl HaxState {
                                         warn!("Tried to adjust game version of lobby games but it was not known");
                                     }
                                 }
+                                if strip_passwords {
+                                    strip_password(&mut room_info);
+                                }
 
                                 room_info.into_map(props);
                             }
@@ -136,7 +140,6 @@ impl HaxState {
                 }
                 event_code::JOIN => {
                     let props = event.parameters.get_mut(&parameter_code::PLAYER_PROPERTIES);
-                    dbg!(&props);
 
                     if let Some(PhotonDataType::Hashtable(props)) = props {
                         let player = Player::from_map(props);
@@ -161,6 +164,26 @@ impl HaxState {
 
         Ok(())
     }
+}
+
+fn strip_password(room_info: &mut RoomInfo) {
+    let has_password = match room_info.custom_properties.get("password") {
+        Some(PhotonDataType::String(s)) => !s.is_empty(),
+        _ => false,
+    };
+
+    if has_password {
+        if let Some(PhotonDataType::String(name)) = room_info.custom_properties.get_mut("roomName")
+        {
+            *name = format!("[p] {name}");
+        }
+
+        if let Some(PhotonDataType::String(password)) =
+            room_info.custom_properties.get_mut("password")
+        {
+            *password = "".to_string();
+        }
+    };
 }
 
 fn force_games_web(room_info: &mut RoomInfo) {
