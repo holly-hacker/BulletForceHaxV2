@@ -11,27 +11,16 @@ rust-version = "1.57"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[build-dependencies]
-tauri-build = { version = "1.1.1", features = [] }
-
 [dependencies]
 bulletforcehax2_lib = { path = "../bulletforcehax2_lib" }
 bulletforcehax2_ui = { path = "../bulletforcehax2_ui" }
 futures-util = "0.3"
 serde_json = "1"
 serde = { version = "1", features = ["derive"] }
-tauri = { version = "1.1", features = ["api-all"] }
-tauri-egui = "0.1"
+tauri-egui = "0.1" # TODO: replace me with `egui` and `eframe-tao`
 anyhow = { version = "1", features = ["backtrace"] }
 once_cell = "1"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt"] }
-
-[features]
-# by default Tauri runs in production mode
-# when `tauri dev` runs it is executed with `cargo run --no-default-features` if `devPath` is an URL
-default = [ "custom-protocol" ]
-# this feature is used for production builds where `devPath` points to the filesystem
-# DO NOT remove this
-custom-protocol = [ "tauri/custom-protocol" ]
+wry = { version = "0.21.1", features = ["devtools"] }

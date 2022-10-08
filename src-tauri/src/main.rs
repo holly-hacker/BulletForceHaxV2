@@ -5,26 +5,55 @@
 
 mod version_manager;
 
-use std::{path::Path, sync::Arc};
+use std::path::Path;
 
-use bulletforcehax2_lib::hax::{BulletForceHax, HaxState};
-use bulletforcehax2_ui::BulletForceHaxMenu;
-use futures_util::lock::Mutex;
+use bulletforcehax2_lib::hax::BulletForceHax;
 use once_cell::sync::OnceCell;
-use tauri::{
-    http::{Request, Response, ResponseBuilder},
-    AppHandle, CustomMenuItem, Manager, Menu, MenuItem, Submenu,
-};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 use tracing_subscriber::prelude::*;
 use version_manager::{VersionConfig, VersionManager};
+use wry::{
+    application::{
+        event::{Event, StartCause, WindowEvent},
+        event_loop::{ControlFlow, EventLoop},
+        menu::{MenuBar, MenuItem, MenuItemAttributes, MenuType},
+        window::WindowBuilder,
+    },
+    http::{Request, Response, ResponseBuilder},
+    webview::WebViewBuilder,
+};
 
 static GAME_VERSION: OnceCell<VersionConfig> = OnceCell::new();
 
-fn bulletforce_handler(
-    _handle: &AppHandle,
-    request: &Request,
-) -> Result<Response, Box<dyn std::error::Error>> {
+fn static_file_handler(request: &Request) -> Result<Response, wry::Error> {
+    let mut path = &request.uri()["static://".len()..];
+
+    if path.starts_with("localhost/") {
+        path = &path["localhost/".len()..];
+    }
+
+    let content = match path {
+        "" => Some(include_bytes!("../ui/index.html").to_vec()),
+        _ => None,
+    };
+
+    let builder = ResponseBuilder::new();
+
+    if let Some(content) = content {
+        builder
+            .status(200)
+            .header("Access-Control-Allow-Origin", "*")
+            .body(content.to_vec())
+            .map_err(Into::into)
+    } else {
+        builder
+            .status(404)
+            .body(b"not found".to_vec())
+            .map_err(Into::into)
+    }
+}
+
+fn bulletforce_handler(request: &Request) -> Result<Response, wry::Error> {
     let mut path = &request.uri()["bulletforce://".len()..];
 
     if path.starts_with("localhost/") {
@@ -46,10 +75,17 @@ fn bulletforce_handler(
         .status(200)
         .header("Access-Control-Allow-Origin", "*")
         .body(content)
+        .map_err(Into::into)
 }
 
 #[tokio::main]
 async fn main() {
+    if let Err(err) = real_main().await {
+        error!("Fatal error in main: {err:?}");
+    }
+}
+
+async fn real_main() -> anyhow::Result<()> {
     // initialize logging
     let default_logging_level = tracing::Level::DEBUG;
     let subscriber = tracing_subscriber::fmt()
@@ -76,12 +112,11 @@ async fn main() {
     // version manager init
     let version_manager = VersionManager::new(Path::new("bfhax_data")).unwrap();
 
-    // NOTE: this does not use the tauri lifecycle management
     let version_info = match version_manager.version() {
         Some(x) => x,
         None => match version_manager.show_version_downloader_blocking().unwrap() {
             Some(x) => x,
-            None => return,
+            None => return Ok(()),
         },
     };
 
@@ -93,53 +128,60 @@ async fn main() {
     hax.start_websocket_proxy();
     info!("Initialized hax");
 
-    let state = hax.get_state();
+    let _state = hax.get_state();
 
-    // create menu
-    let file_submenu = Submenu::new("File", Menu::new().add_native_item(MenuItem::Quit));
-    let menu = Menu::new()
-        .add_submenu(file_submenu)
-        .add_item(CustomMenuItem::new("show_menu", "Menu"));
+    // create menu structure
+    let mut file_submenu = MenuBar::new();
+    file_submenu.add_native_item(MenuItem::Quit);
 
-    // create tauri app and block on it
-    // when the tauri app closes, exit from main
-    #[allow(clippy::single_match)]
-    tauri::Builder::default()
-        .setup(|app| {
-            app.wry_plugin(tauri_egui::EguiPluginBuilder::new(app.handle()));
+    let mut tools_submenu = MenuBar::new();
+    let hax_menu_item = tools_submenu.add_item(MenuItemAttributes::new("Open Hax Menu"));
+    let devtools_menu_item = tools_submenu.add_item(MenuItemAttributes::new("Open Devtools"));
 
-            // automatically open devtools on debug builds
-            #[cfg(debug_assertions)]
-            {
-                use tauri::Manager;
-                app.get_window("main").unwrap().open_devtools();
+    let mut menu = MenuBar::new();
+    menu.add_submenu("File", true, file_submenu);
+    menu.add_submenu("Tools", true, tools_submenu);
+
+    // initialize wry webview
+    let event_loop = EventLoop::new();
+    let window = WindowBuilder::new()
+        .with_title("BulletForceHax")
+        .with_menu(menu)
+        .build(&event_loop)?;
+    let webview = WebViewBuilder::new(window)?
+        .with_custom_protocol("static".into(), static_file_handler)
+        .with_custom_protocol("bulletforce".into(), bulletforce_handler)
+        .with_devtools(true)
+        .with_url("static://localhost/")?
+        .build()?;
+
+    // start event loop
+    event_loop.run(move |event, _event_loop, control_flow| {
+        *control_flow = ControlFlow::Wait;
+
+        match event {
+            Event::NewEvents(StartCause::Init) => {
+                info!("Wry has started!");
             }
-            Ok(())
-        })
-        .manage(state)
-        .menu(menu)
-        .on_menu_event(|event| match event.menu_item_id() {
-            "show_menu" => {
-                let app = event.window().app_handle();
-                let state: tauri::State<Arc<Mutex<HaxState>>> = app.state();
-                let state = state.inner().clone();
-
-                info!("Opening hax ui");
-                app.state::<tauri_egui::EguiPluginHandle>()
-                    .create_window(
-                        "hax".to_string(),
-                        Box::new(move |_cc| Box::new(BulletForceHaxMenu::new(state))),
-                        "Hax Menu".into(),
-                        tauri_egui::eframe::NativeOptions {
-                            initial_window_size: Some((320f32, 640f32).into()),
-                            ..Default::default()
-                        },
-                    )
-                    .unwrap();
+            Event::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                ..
+            } => *control_flow = ControlFlow::Exit,
+            Event::MenuEvent {
+                menu_id,
+                origin: MenuType::MenuBar,
+                ..
+            } if menu_id == hax_menu_item.clone().id() => {
+                info!("hax menu button clicked");
+            }
+            Event::MenuEvent {
+                menu_id,
+                origin: MenuType::MenuBar,
+                ..
+            } if menu_id == devtools_menu_item.clone().id() => {
+                webview.open_devtools();
             }
             _ => (),
-        })
-        .register_uri_scheme_protocol("bulletforce", bulletforce_handler)
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        }
+    });
 }
