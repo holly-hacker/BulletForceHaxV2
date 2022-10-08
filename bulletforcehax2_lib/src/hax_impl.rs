@@ -5,11 +5,11 @@ use photon_lib::{
     photon_data_type::PhotonDataType,
     photon_message::PhotonMessage,
     realtime::{
-        constants::{event_code, parameter_code},
+        constants::{event_code, operation_code, parameter_code},
         PhotonMapConversion, Player, RoomInfo,
     },
 };
-use tracing::{debug, info, trace};
+use tracing::{debug, info, trace, warn};
 
 use crate::hax::HaxState;
 
@@ -40,7 +40,7 @@ impl HaxState {
     ) -> anyhow::Result<()> {
         let mut photon_message = PhotonMessage::from_websocket_bytes(&mut data.as_slice())?;
 
-        let x = match &photon_message {
+        let debug_info = match &photon_message {
             PhotonMessage::OperationRequest(r) => Some(("OperationRequest", r.operation_code)),
             PhotonMessage::OperationResponse(r) => Some(("OperationResponse", r.operation_code)),
             PhotonMessage::EventData(e) => Some(("EventData", e.code)),
@@ -53,30 +53,80 @@ impl HaxState {
             _ => None,
         };
 
-        if let Some((name, code)) = x {
+        if let Some((name, code)) = debug_info {
             debug!("{direction} {name} {code}");
             debug!("{direction} data: {photon_message:?}");
         }
 
         // TODO: check if on lobby socket
         match &mut photon_message {
+            PhotonMessage::OperationRequest(operation_request) => {
+                #[allow(clippy::single_match)]
+                match operation_request.operation_code {
+                    operation_code::AUTHENTICATE => {
+                        let mut hax = futures::executor::block_on(hax.lock());
+
+                        if let Some(PhotonDataType::String(app_version)) = operation_request
+                            .parameters
+                            .get(&parameter_code::APP_VERSION)
+                        {
+                            hax.game_version = Some(app_version.clone());
+                        }
+
+                        if let Some(PhotonDataType::String(user_id)) =
+                            operation_request.parameters.get(&parameter_code::USER_ID)
+                        {
+                            hax.user_id = Some(user_id.clone());
+                        }
+                    }
+                    _ => (),
+                }
+            }
             PhotonMessage::EventData(event) => match event.code {
                 event_code::GAME_LIST | event_code::GAME_LIST_UPDATE => {
-                    let show_mobile_games =
-                        futures::executor::block_on(hax.lock()).show_mobile_games;
+                    let (show_mobile, show_all_versions, game_version) = {
+                        let hax = futures::executor::block_on(hax.lock());
+                        (
+                            hax.show_mobile_games,
+                            hax.show_other_versions,
+                            hax.game_version.clone(),
+                        )
+                    };
                     let game_list = event.parameters.get_mut(&parameter_code::GAME_LIST);
                     if let Some(PhotonDataType::Hashtable(games)) = game_list {
-                        for (k, v) in games {
+                        for (k, v) in games.iter_mut() {
                             if let (
                                 PhotonDataType::String(game_name),
                                 PhotonDataType::Hashtable(props),
                             ) = (k, v)
                             {
                                 let mut room_info = RoomInfo::from_map(props);
+
+                                // NOTE: BulletForce has `gameVersion` as key so this wont match
+                                if let Some(PhotonDataType::String(version)) =
+                                    room_info.custom_properties.get("gameversion")
+                                {
+                                    if version.starts_with("newfps-") {
+                                        continue;
+                                    }
+                                }
+
                                 trace!("room {game_name}: {room_info:?}");
 
-                                if show_mobile_games {
+                                if show_mobile {
                                     force_games_web(&mut room_info);
+                                }
+                                if show_all_versions {
+                                    if let Some(version) = &game_version {
+                                        // versions seen in the wild are like '1.89.0_1.99', we only want the first half of that
+                                        let version = match version.split_once('_') {
+                                            Some((v1, _)) => v1,
+                                            None => version.as_str(),
+                                        };
+                                        force_games_current_ver(&mut room_info, version);
+                                    } else {
+                                        warn!("Tried to adjust game version of lobby games but it was not known");
+                                    }
                                 }
 
                                 room_info.into_map(props);
@@ -131,4 +181,28 @@ fn force_games_web(room_info: &mut RoomInfo) {
     if let Some(PhotonDataType::String(x)) = room_info.custom_properties.get_mut("storeID") {
         *x = "BALYZE_WEB".into();
     }
+}
+
+/// Forces all games to the current version so they appear in the lobby list.
+///
+/// Note that this only handle BulletForce games which use `gameVersion` as key, the "newgame" game uses `gameversion`
+/// (no uppercase 'v') which we dont match. This is intended.
+fn force_games_current_ver(room_info: &mut RoomInfo, target_version: &str) {
+    let actual_version = match room_info.custom_properties.get("gameVersion").cloned() {
+        Some(PhotonDataType::String(version)) => version,
+        _ => return,
+    };
+
+    if actual_version != target_version {
+        if let Some(PhotonDataType::String(name)) = room_info.custom_properties.get_mut("roomName")
+        {
+            *name = format!("[{actual_version}] {name}");
+        }
+
+        if let Some(PhotonDataType::String(new_version)) =
+            room_info.custom_properties.get_mut("gameVersion")
+        {
+            *new_version = target_version.to_string();
+        }
+    };
 }

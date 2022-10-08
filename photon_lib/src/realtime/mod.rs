@@ -69,10 +69,9 @@ mod tests {
     use indexmap::{indexmap, IndexMap};
     use ordered_float::OrderedFloat;
 
+    use super::constants::game_property_key;
     use crate::photon_data_type::PhotonDataType;
     use crate::realtime::{PhotonMapConversion, RoomInfo};
-
-    use super::constants::game_property_key;
 
     #[test]
     fn room_info() {

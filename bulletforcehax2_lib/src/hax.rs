@@ -23,10 +23,17 @@ pub struct BulletForceHax {
 /// The internal state.
 #[derive(Default)]
 pub struct HaxState {
+    // socket info
     pub lobby_socket: Option<WebSocketProxy>,
     pub gameplay_socket: Option<WebSocketProxy>,
 
+    // info
+    pub user_id: Option<String>,
+    pub game_version: Option<String>,
+
+    // features
     pub show_mobile_games: bool,
+    pub show_other_versions: bool,
 }
 
 impl BulletForceHax {

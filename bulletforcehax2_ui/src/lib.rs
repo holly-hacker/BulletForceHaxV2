@@ -1,16 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use bulletforcehax2_lib::hax::HaxState;
-use bulletforcehax2_lib::indexmap::indexmap;
 use futures_util::lock::Mutex;
-use photon_lib::{
-    photon_data_type::PhotonDataType,
-    photon_message::{EventData, PhotonMessage},
-    realtime::{
-        constants::{event_code, parameter_code},
-        PhotonMapConversion, RoomInfo,
-    },
-};
 
 pub struct BulletForceHaxMenu {
     hax: Arc<Mutex<HaxState>>,
@@ -32,20 +23,33 @@ impl eframe::App for BulletForceHaxMenu {
 
             let mut hax = futures::executor::block_on(self.hax.lock());
 
+            ui.heading("Info");
+            if let Some(user_id) = &hax.user_id {
+                ui.label(format!("User ID: {user_id}"));
+            }
+            if let Some(version) = &hax.game_version {
+                ui.label(format!("Game version: {version}"));
+            }
+            ui.add_space(16f32);
+
+            ui.heading("Lobby");
+            ui.checkbox(&mut hax.show_mobile_games, "Show mobile games");
+            ui.checkbox(
+                &mut hax.show_other_versions,
+                "Show games for other versions",
+            );
+            ui.add_space(16f32);
+
             #[cfg(debug_assertions)]
             {
+                ui.heading("Debug");
                 ui.label(format!("lobby socket: {}", hax.lobby_socket.is_some()));
                 ui.label(format!(
                     "gameplay socket: {}",
                     hax.gameplay_socket.is_some()
                 ));
+                ui.add_space(16f32);
             }
-
-            ui.add_space(16f32);
-            ui.heading("Lobby");
-            ui.checkbox(&mut hax.show_mobile_games, "Show mobile games");
-
-            ui.add_space(16f32);
 
             drop(hax);
             if let Some(fps) = frame.info().cpu_usage {

@@ -130,7 +130,10 @@ async fn main() {
                         "hax".to_string(),
                         Box::new(move |_cc| Box::new(BulletForceHaxMenu::new(state))),
                         "Hax Menu".into(),
-                        tauri_egui::eframe::NativeOptions::default(),
+                        tauri_egui::eframe::NativeOptions {
+                            initial_window_size: Some((320f32, 640f32).into()),
+                            ..Default::default()
+                        },
                     )
                     .unwrap();
             }
