@@ -5,7 +5,7 @@
 
 mod version_manager;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use bulletforcehax2_lib::hax::BulletForceHax;
 use once_cell::sync::OnceCell;
@@ -20,7 +20,7 @@ use wry::{
         window::WindowBuilder,
     },
     http::{Request, Response, ResponseBuilder},
-    webview::WebViewBuilder,
+    webview::{WebContext, WebViewBuilder},
 };
 
 static GAME_VERSION: OnceCell<VersionConfig> = OnceCell::new();
@@ -149,6 +149,11 @@ async fn real_main() -> anyhow::Result<()> {
         .with_menu(menu)
         .build(&event_loop)?;
     let webview = WebViewBuilder::new(window)?
+        .with_web_context(&mut WebContext::new(Some(
+            std::env::current_dir()
+                .unwrap()
+                .join("./bfhax_data/webview_data_directory"),
+        )))
         .with_custom_protocol("static".into(), static_file_handler)
         .with_custom_protocol("bulletforce".into(), bulletforce_handler)
         .with_devtools(true)
