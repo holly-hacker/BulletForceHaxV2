@@ -10,6 +10,7 @@ use std::path::Path;
 use bulletforcehax2_lib::hax::BulletForceHax;
 use bulletforcehax2_ui::BulletForceHaxMenu;
 use once_cell::sync::OnceCell;
+use tao_egui::WindowCreationSettings;
 use tracing::{debug, error, info};
 use tracing_subscriber::prelude::*;
 use version_manager::{VersionConfig, VersionManager};
@@ -147,7 +148,13 @@ async fn real_main() -> anyhow::Result<()> {
     let event_loop = EventLoop::new();
 
     // create the egui window
-    let mut egui_window = tao_egui::TaoEguiWindow::new(&event_loop, "Hax Menu");
+    let mut egui_window = tao_egui::TaoEguiWindow::new(
+        &event_loop,
+        WindowCreationSettings {
+            size: (300f32, 600f32),
+            window_title: "Hax Menu".into(),
+        },
+    );
 
     // create the window for the webview
     let window = WindowBuilder::new()

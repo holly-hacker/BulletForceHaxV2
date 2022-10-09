@@ -13,9 +13,23 @@ pub struct TaoEguiWindow {
     egui_glow: EguiGlow,
 }
 
+pub struct WindowCreationSettings {
+    pub window_title: String,
+    pub size: (f32, f32),
+}
+
+impl Default for WindowCreationSettings {
+    fn default() -> Self {
+        Self {
+            window_title: "Egui Window".into(),
+            size: (800f32, 600f32),
+        }
+    }
+}
+
 impl TaoEguiWindow {
-    pub fn new(event_loop: &EventLoop<()>, window_title: impl Into<String>) -> Self {
-        let (gl_window, gl) = create_display(event_loop, window_title);
+    pub fn new(event_loop: &EventLoop<()>, settings: WindowCreationSettings) -> Self {
+        let (gl_window, gl) = create_display(event_loop, settings);
         let gl = std::sync::Arc::new(gl);
         let egui_glow = egui_glow::EguiGlow::new(event_loop, gl.clone());
 
@@ -99,7 +113,7 @@ impl TaoEguiWindow {
 // NOTE: adapted from tao/winit example code
 fn create_display(
     event_loop: &EventLoop<()>,
-    window_title: impl Into<String>,
+    settings: WindowCreationSettings,
 ) -> (
     glutin::WindowedContext<glutin::PossiblyCurrent>,
     glow::Context,
@@ -107,10 +121,10 @@ fn create_display(
     let window_builder = glutin::window::WindowBuilder::new()
         .with_resizable(true)
         .with_inner_size(glutin::dpi::LogicalSize {
-            width: 800.0,
-            height: 600.0,
+            width: settings.size.0,
+            height: settings.size.1,
         })
-        .with_title(window_title);
+        .with_title(settings.window_title);
 
     let gl_window = unsafe {
         glutin::ContextBuilder::new()
