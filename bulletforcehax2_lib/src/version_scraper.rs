@@ -6,6 +6,8 @@ use hyper::{body::HttpBody, Body, Client, Request};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use anyhow::{anyhow, Context, Result};
+use tower::{Service, ServiceBuilder, ServiceExt};
+use tower_http::decompression::{Decompression, DecompressionLayer};
 use tracing::debug;
 
 const UNITY_LOADER_URL: &str = "https://files.crazygames.com/unityloaders/UnityLoader-v3.js";
@@ -62,10 +64,13 @@ pub fn start_download_thread() -> Result<Receiver<ProgressReport>> {
 async fn do_download(tx: Sender<ProgressReport>) -> Result<()> {
     // TODO: add tower-http's compressing middleware
     let client = Client::builder().build::<_, hyper::Body>(hyper_tls::HttpsConnector::new());
+    let mut client = ServiceBuilder::new()
+        .layer(DecompressionLayer::new())
+        .service(client);
 
     // download loader
     download_file_with_progress(
-        &client,
+        &mut client,
         UNITY_LOADER_URL,
         "UnityLoader.js",
         FileType::UnityLoader,
@@ -74,19 +79,21 @@ async fn do_download(tx: Sender<ProgressReport>) -> Result<()> {
     .await?;
 
     // find game files
-    let source_1 = hyper_get(&client, POKI_URL).await.context("get source_1")?;
+    let source_1 = hyper_get(&mut client, POKI_URL)
+        .await
+        .context("get source_1")?;
     let match_1 = regex::Regex::new(POKI_FRAME_URL_PATTERN)?
         .find(&source_1)
         .ok_or_else(|| anyhow!("Could not find poki regex 1"))?;
     let frame_url = match_1.as_str();
-    let source_2 = hyper_get_with_referrer(&client, frame_url)
+    let source_2 = hyper_get_with_referrer(&mut client, frame_url)
         .await
         .context("get source_2")?;
     let match_2 = regex::Regex::new(POKI_GAME_URL_PATTERN)?
         .find(&source_2)
         .ok_or_else(|| anyhow!("Could not find poki regex 2"))?;
     let game_url = match_2.as_str();
-    let source_3 = hyper_get_with_referrer(&client, game_url)
+    let source_3 = hyper_get_with_referrer(&mut client, game_url)
         .await
         .context("get source_3")?;
     let match_3 = regex::Regex::new(POKI_GAME_JSON_PATTERN)?
@@ -99,7 +106,7 @@ async fn do_download(tx: Sender<ProgressReport>) -> Result<()> {
     let abs_url_json_base = &game_url[..game_url.rfind('/').unwrap()];
     let abs_url_json = abs_url_json_base.to_string() + "/" + &rel_url_json;
     download_file_with_progress(
-        &client,
+        &mut client,
         &abs_url_json,
         &rel_url_json,
         FileType::GameJson,
@@ -108,7 +115,7 @@ async fn do_download(tx: Sender<ProgressReport>) -> Result<()> {
     .await?;
 
     // yes I'm downloading the json twice, I cba to rewrite the code
-    let json = hyper_get(&client, &abs_url_json).await?;
+    let json = hyper_get(&mut client, &abs_url_json).await?;
     let json: serde_json::Value = serde_json::from_str(&json).context("parse game json")?;
 
     let base_url_file = &abs_url_json[..abs_url_json.rfind('/').unwrap()];
@@ -127,7 +134,7 @@ async fn do_download(tx: Sender<ProgressReport>) -> Result<()> {
         let abs_url_file = format!("{base_url_file}/{rel_url}");
         let file_name = &abs_url_file[(abs_url_json_base.len() + 1)..];
         download_file_with_progress(
-            &client,
+            &mut client,
             &abs_url_file,
             file_name,
             FileType::GameFile,
@@ -145,17 +152,23 @@ async fn do_download(tx: Sender<ProgressReport>) -> Result<()> {
     Ok(())
 }
 
-async fn hyper_get<T>(client: &Client<T>, url: &str) -> Result<String>
+async fn hyper_get<T>(client: &mut Decompression<Client<T>>, url: &str) -> Result<String>
 where
     T: hyper::client::connect::Connect + Clone + Send + Sync + 'static,
 {
     let uri = hyper::Uri::try_from(url)?;
-    let response = client.get(uri).await?;
-    let bytes = hyper::body::to_bytes(response).await?;
+    let request = Request::builder().uri(uri).body(Body::empty())?;
+    let response = client.call(request).await?;
+    let bytes = hyper::body::to_bytes(response)
+        .await
+        .map_err(|e| anyhow!("Error while getting http: {}", e))?;
     Ok(String::from_utf8(bytes.to_vec())?)
 }
 
-async fn hyper_get_with_referrer<T>(client: &Client<T>, url: &str) -> Result<String>
+async fn hyper_get_with_referrer<T>(
+    client: &mut Decompression<Client<T>>,
+    url: &str,
+) -> Result<String>
 where
     T: hyper::client::connect::Connect + Clone + Send + Sync + 'static,
 {
@@ -164,13 +177,15 @@ where
         .header("referer", "https://poki.com")
         .uri(uri)
         .body(Body::empty())?;
-    let response = client.request(request).await?;
-    let bytes = hyper::body::to_bytes(response).await?;
+    let response = client.call(request).await?;
+    let bytes = hyper::body::to_bytes(response)
+        .await
+        .map_err(|e| anyhow!("Error while getting http: {}", e))?;
     Ok(String::from_utf8(bytes.to_vec())?)
 }
 
 async fn download_file_with_progress<T>(
-    client: &Client<T>,
+    client: &mut Decompression<Client<T>>,
     url: &str,
     name: &str,
     file_type: FileType,
@@ -179,13 +194,12 @@ async fn download_file_with_progress<T>(
 where
     T: hyper::client::connect::Connect + Clone + Send + Sync + 'static,
 {
-    let mut response = client.get(hyper::Uri::try_from(url).unwrap()).await?;
-    let content_length = response
-        .headers()
-        .get("content-length")
-        .and_then(|len| len.to_str().unwrap().parse::<u64>().ok());
+    let uri = hyper::Uri::try_from(url)?;
+    let request = Request::builder().uri(uri).body(Body::empty())?;
+    let mut response = client.ready().await?.call(request).await?;
 
-    let mut data = vec![];
+    let size_hint = response.body().size_hint();
+    let content_length = size_hint.exact();
 
     tx.send(ProgressReport::Progress {
         file_type,
@@ -198,10 +212,12 @@ where
     .context("initial progress send")
     .unwrap();
 
+    let mut data = Vec::with_capacity(size_hint.lower() as usize);
+
     const UPDATE_FREQUENCY: Duration = Duration::from_millis(50);
     let mut last_progress = Instant::now();
     while let Some(next) = response.data().await {
-        let next = next?;
+        let next = next.map_err(|e| anyhow!("Error while reading http body: {}", e))?;
         data.extend_from_slice(&next);
 
         let now = Instant::now();
