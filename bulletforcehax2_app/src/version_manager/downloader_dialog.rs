@@ -1,12 +1,11 @@
-use std::{
-    collections::HashMap,
-    sync::mpsc::{channel, Receiver, Sender},
-};
+use std::collections::HashMap;
 
 use anyhow::Result;
 use bulletforcehax2_lib::version_scraper::*;
+use bytesize::ByteSize;
 use eframe::App;
 use egui::{self, Color32, ProgressBar, RichText};
+use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tracing::{debug, info};
 
 pub struct DownloaderDialog {
@@ -32,7 +31,7 @@ struct FileDownloadProgress {
 
 impl DownloaderDialog {
     pub fn new() -> (Self, Receiver<Vec<DownloadedFile>>) {
-        let (tx, rx) = channel();
+        let (tx, rx) = channel(4);
         (
             Self {
                 tx,
@@ -46,7 +45,7 @@ impl DownloaderDialog {
     }
 
     pub fn show_dialog() -> Result<Vec<DownloadedFile>> {
-        let (dialog, rx) = Self::new();
+        let (dialog, mut rx) = Self::new();
 
         debug!("dialog starting");
         eframe::run_native(
@@ -76,63 +75,76 @@ impl App for DownloaderDialog {
             .rx_scraper
             .get_or_insert_with(|| start_download_thread().unwrap());
 
-        while let Ok(report) = rx_scraper.try_recv() {
-            match report {
-                ProgressReport::Progress {
-                    file_type: _,
-                    name,
-                    downloaded,
-                    total,
-                } => match self.file_progress.get_mut(&name) {
-                    Some(file) => {
-                        file.downloaded = downloaded;
-                        file.total = total;
-                    }
-                    None => {
-                        self.file_progress.insert(
-                            name,
-                            FileDownloadProgress {
-                                downloaded,
-                                total,
-                                finished: false,
-                            },
-                        );
-                    }
-                },
-                ProgressReport::FileDownloaded {
-                    file_type,
-                    name,
-                    data,
-                } => {
-                    // insert into state
-                    match self.file_progress.get_mut(&name) {
+        match rx_scraper.try_recv() {
+            Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => {
+                tracing::debug!("Channel disconnected")
+            }
+            Err(tokio::sync::mpsc::error::TryRecvError::Empty) => (),
+            Ok(report) => {
+                match report {
+                    ProgressReport::Progress {
+                        file_type: _,
+                        name,
+                        downloaded,
+                        total,
+                    } => match self.file_progress.get_mut(&name) {
                         Some(file) => {
-                            file.finished = true;
+                            file.downloaded = downloaded;
+                            file.total = total;
                         }
                         None => {
                             self.file_progress.insert(
-                                name.clone(),
+                                name,
                                 FileDownloadProgress {
-                                    downloaded: data.len() as u64,
-                                    total: Some(data.len() as u64),
-                                    finished: true,
+                                    downloaded,
+                                    total,
+                                    finished: false,
                                 },
                             );
                         }
-                    };
-
-                    self.files.push(DownloadedFile {
-                        name,
+                    },
+                    ProgressReport::FileDownloaded {
                         file_type,
+                        name,
                         data,
-                    });
+                    } => {
+                        info!("File downloaded: {name}");
+                        // insert into state
+                        match self.file_progress.get_mut(&name) {
+                            Some(file) => {
+                                file.finished = true;
+                            }
+                            None => {
+                                self.file_progress.insert(
+                                    name.clone(),
+                                    FileDownloadProgress {
+                                        downloaded: data.len() as u64,
+                                        total: Some(data.len() as u64),
+                                        finished: true,
+                                    },
+                                );
+                            }
+                        };
+
+                        self.files.push(DownloadedFile {
+                            name,
+                            file_type,
+                            data,
+                        });
+                    }
+                    ProgressReport::AllFilesDownloaded => {
+                        info!("Finished downloading all files, closing dialog");
+                        // NOTE: not sure if I want to block here, it's probably fine
+                        futures::executor::block_on(self.tx.send(self.files.clone()))
+                            .ok()
+                            .unwrap();
+                        frame.close()
+                    }
+                    ProgressReport::Crashed(e) => {
+                        info!("Received crash message");
+                        self.error = Some(e)
+                    }
                 }
-                ProgressReport::AllFilesDownloaded => {
-                    info!("Finished downloading all files, closing dialog");
-                    self.tx.send(self.files.clone()).unwrap();
-                    frame.close()
-                }
-                ProgressReport::Crashed(e) => self.error = Some(e),
             }
         }
 
@@ -157,7 +169,7 @@ impl App for DownloaderDialog {
                         ui.spinner();
                     }
 
-                    ui.label(name);
+                    ui.label(format!("{name} ({} downloaded)", ByteSize(info.downloaded)));
                 });
             }
 
