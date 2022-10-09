@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use bulletforcehax2_lib::hax::HaxState;
 use futures_util::lock::Mutex;
@@ -11,12 +11,10 @@ impl BulletForceHaxMenu {
     pub fn new(hax: Arc<Mutex<HaxState>>) -> Self {
         Self { hax }
     }
-}
 
-impl eframe::App for BulletForceHaxMenu {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    pub fn update(&mut self, ctx: &egui::Context) {
         // set framerate to 20fps
-        ctx.request_repaint_after(std::time::Duration::from_secs_f32(1f32 / 20f32));
+        ctx.request_repaint_after(std::time::Duration::from_secs_f32(1f32 / 10f32));
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("hax menu goes here :D");
@@ -53,9 +51,9 @@ impl eframe::App for BulletForceHaxMenu {
             }
 
             drop(hax);
-            if let Some(fps) = frame.info().cpu_usage {
-                ui.label(format!("cpu usage {:?}", Duration::from_secs_f32(fps)));
-            }
+
+            // TODO: add back FPS counter
+            ui.label(format!("Time: {}", ctx.input().time));
         });
     }
 }

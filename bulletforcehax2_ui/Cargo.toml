@@ -13,6 +13,3 @@ futures-util = "0.3"
 egui = "0.19"
 tokio = "1"
 tracing = "0.1"
-
-# NOTE: we need to use tauri's eframe fork, because that's what they use I guess
-eframe = { package = "eframe_tao", version = "0.20.0" }
