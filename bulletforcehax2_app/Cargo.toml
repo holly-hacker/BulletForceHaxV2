@@ -15,12 +15,12 @@ serde = { version = "1", features = ["derive"] }
 egui = "0.19"
 anyhow = { version = "1", features = ["backtrace"] }
 once_cell = "1"
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 futures = "0.3"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt"] }
 wry = { version = "0.21", features = ["devtools"] }
+bytesize = "1.1"
 
 # eframe is only used for the download dialog, because it runs before the webview event loop
 eframe = { package = "eframe_tao", version = "0.20" }
-bytesize = "1.1.0"
