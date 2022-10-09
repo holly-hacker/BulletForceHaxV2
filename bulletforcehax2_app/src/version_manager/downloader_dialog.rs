@@ -169,7 +169,16 @@ impl App for DownloaderDialog {
                         ui.spinner();
                     }
 
-                    ui.label(format!("{name} ({} downloaded)", ByteSize(info.downloaded)));
+                    match info.total {
+                        Some(total) => ui.label(format!(
+                            "{name} ({}/{} downloaded)",
+                            ByteSize(info.downloaded),
+                            ByteSize(total)
+                        )),
+                        None => {
+                            ui.label(format!("{name} ({} downloaded)", ByteSize(info.downloaded)))
+                        }
+                    }
                 });
             }
 
