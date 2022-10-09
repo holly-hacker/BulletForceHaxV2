@@ -35,7 +35,7 @@ fn static_file_handler(request: &Request) -> Result<Response, wry::Error> {
     }
 
     let content = match path {
-        "" => Some(include_bytes!("../ui/index.html").to_vec()),
+        "" => Some(include_bytes!("../assets/index.html").to_vec()),
         _ => None,
     };
 

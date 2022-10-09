@@ -1,18 +1,19 @@
 # Project structure
 
 This project contains/will contain the following crates:
-- `src-tauri`: Tauri frontend code. This spawns a webview with the game loaded, and automatically runs BulletForceHaxV2 in the background.
+- `bulletforcehax2_app`: Runnable app. This spawns a webview with the game loaded and automatically runs BulletForceHaxV2 in the background.
 - `bulletforcehax2_ui`: egui-based UI code for controlling BulletForceHaxV2.
 - `bulletforcehax2_lib`: The core logic of BulletForceHaxV2.
 - `photon_bulletforce`: Conversion of photon types to bulletforce types.
 - `photon_lib`: Low-level implementation of the photon network protocol.
+- `tao_egui`: Utility crate to run an egui app alongside the webview in `bulletforcehax2_app`.
 
 Dependency graph:
 ```mermaid
 flowchart TD
-    src-tauri --> bulletforcehax2_ui & bulletforcehax2_lib
-    bulletforcehax2_ui --> bulletforcehax2_lib
-    bulletforcehax2_lib --> photon_bulletforce --> photon_lib
+    bulletforcehax2_app --> tao_egui & bulletforcehax2_ui & bulletforcehax2_lib
+    bulletforcehax2_ui --> bulletforcehax2_lib & photon_lib
+    bulletforcehax2_lib --> photon_lib
 ```
 
 # Checking code coverage
