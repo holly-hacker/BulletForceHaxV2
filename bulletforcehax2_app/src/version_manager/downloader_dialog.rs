@@ -5,10 +5,8 @@ use std::{
 
 use anyhow::Result;
 use bulletforcehax2_lib::version_scraper::*;
-use tauri_egui::{
-    eframe::App,
-    egui::{self, Color32, ProgressBar, RichText},
-};
+use eframe::App;
+use egui::{self, Color32, ProgressBar, RichText};
 use tracing::{debug, info};
 
 pub struct DownloaderDialog {
@@ -51,9 +49,9 @@ impl DownloaderDialog {
         let (dialog, rx) = Self::new();
 
         debug!("dialog starting");
-        tauri_egui::eframe::run_native(
+        eframe::run_native(
             "Version Downloader",
-            tauri_egui::eframe::NativeOptions {
+            eframe::NativeOptions {
                 initial_window_size: Some((480.0, 240.0).into()),
                 ..Default::default()
             },
@@ -70,7 +68,7 @@ impl DownloaderDialog {
 }
 
 impl App for DownloaderDialog {
-    fn update(&mut self, ctx: &tauri_egui::egui::Context, frame: &mut tauri_egui::eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         // re-draw continuously to make sure the channel reader runs
         ctx.request_repaint();
 

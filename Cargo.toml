@@ -1,6 +1,7 @@
 workspace.members = [
-    "src-tauri",
+    "photon_lib",
     "bulletforcehax2_lib",
     "bulletforcehax2_ui",
-    "photon_lib"
+    "bulletforcehax2_app",
+    "tao_egui",
 ]
