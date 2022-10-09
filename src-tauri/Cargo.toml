@@ -14,6 +14,7 @@ rust-version = "1.57"
 [dependencies]
 bulletforcehax2_lib = { path = "../bulletforcehax2_lib" }
 bulletforcehax2_ui = { path = "../bulletforcehax2_ui" }
+tao_egui = { path = "../tao_egui" }
 futures-util = "0.3"
 serde_json = "1"
 serde = { version = "1", features = ["derive"] }
@@ -24,9 +25,6 @@ tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt"] }
 wry = { version = "0.21.1", features = ["devtools"] }
-glutin_tao = "0.30.0"
-glow = "0.11.2"
-egui_glow = { package = "egui_glow_tao", version = "0.20.0", features = ["winit"] } # TODO: may need fonts?
 
 # eframe is only used for the download dialog, because it runs before the webview event loop
 eframe = { package = "eframe_tao", version = "0.20" }

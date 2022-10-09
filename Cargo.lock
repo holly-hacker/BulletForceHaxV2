@@ -96,13 +96,11 @@ dependencies = [
  "bulletforcehax2_ui",
  "eframe_tao",
  "egui",
- "egui_glow_tao",
  "futures-util",
- "glow",
- "glutin_tao",
  "once_cell",
  "serde",
  "serde_json",
+ "tao_egui",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -2932,6 +2930,15 @@ dependencies = [
  "windows",
  "windows-implement",
  "x11-dl",
+]
+
+[[package]]
+name = "tao_egui"
+version = "0.1.0"
+dependencies = [
+ "egui_glow_tao",
+ "glow",
+ "glutin_tao",
 ]
 
 [[package]]
