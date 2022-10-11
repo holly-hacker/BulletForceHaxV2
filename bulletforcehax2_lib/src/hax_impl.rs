@@ -6,7 +6,7 @@ use photon_lib::{
     photon_message::PhotonMessage,
     realtime::{
         constants::{event_code, operation_code, parameter_code},
-        PhotonMapConversion, Player, RoomInfo,
+        PhotonMapConversion, PhotonParameterMapConversion, Player, RoomInfo, RoomInfoList,
     },
 };
 use tracing::{debug, info, trace, warn};
@@ -93,8 +93,8 @@ impl HaxState {
                             hax.game_version.clone(),
                         )
                     };
-                    let game_list = event.parameters.get_mut(&parameter_code::GAME_LIST);
-                    if let Some(PhotonDataType::Hashtable(games)) = game_list {
+                    let mut game_list = RoomInfoList::from_map(&mut event.parameters);
+                    if let Some(games) = &mut game_list.games {
                         for (k, v) in games.iter_mut() {
                             if let (
                                 PhotonDataType::String(game_name),
@@ -137,6 +137,8 @@ impl HaxState {
                             }
                         }
                     }
+
+                    game_list.into_map(&mut event.parameters);
                 }
                 event_code::JOIN => {
                     let props = event.parameters.get_mut(&parameter_code::PLAYER_PROPERTIES);

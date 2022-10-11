@@ -6,12 +6,24 @@ mod macro_impl;
 
 use indexmap::IndexMap;
 
-use self::constants::{actor_properties, game_property_key};
+use self::constants::{actor_properties, game_property_key, parameter_code};
 use crate::photon_data_type::PhotonDataType;
+
+pub trait PhotonParameterMapConversion {
+    fn from_map(properties: &mut IndexMap<u8, PhotonDataType>) -> Self;
+    fn into_map(self, map: &mut IndexMap<u8, PhotonDataType>);
+}
 
 pub trait PhotonMapConversion {
     fn from_map(properties: &mut IndexMap<PhotonDataType, PhotonDataType>) -> Self;
     fn into_map(self, map: &mut IndexMap<PhotonDataType, PhotonDataType>);
+}
+
+impl_u8_map_conversion! {
+    RoomInfoList {
+        #[parameter_code::GAME_LIST => PhotonDataType::Hashtable]
+        games: IndexMap<PhotonDataType, PhotonDataType>,
+    }
 }
 
 // NOTE: this macro adds a `custom_properties` field for remaining, string-keyed properties
