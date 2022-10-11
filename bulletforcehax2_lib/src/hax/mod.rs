@@ -1,5 +1,7 @@
 //! The main module of BulletForceHaxV2.
 
+mod hax_impl;
+
 use std::sync::Arc;
 
 use futures_util::lock::Mutex;
