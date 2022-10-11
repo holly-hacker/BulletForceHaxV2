@@ -11,7 +11,10 @@ use photon_lib::{
 };
 use tracing::{debug, info, trace, warn};
 
-use crate::hax::HaxState;
+use crate::{
+    hax::HaxState,
+    proxy::{Direction, WebSocketServer},
+};
 
 impl HaxState {
     #[allow(clippy::ptr_arg)]
@@ -36,7 +39,8 @@ impl HaxState {
     pub fn websocket_hook(
         hax: Arc<Mutex<Self>>,
         data: &mut Vec<u8>,
-        direction: &'static str,
+        _server: WebSocketServer,
+        direction: Direction,
     ) -> anyhow::Result<()> {
         let mut photon_message = PhotonMessage::from_websocket_bytes(&mut data.as_slice())?;
 

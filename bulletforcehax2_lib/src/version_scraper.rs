@@ -2,10 +2,9 @@
 
 use std::time::{Duration, Instant};
 
+use anyhow::{anyhow, Context, Result};
 use hyper::{body::HttpBody, Body, Client, Request};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-
-use anyhow::{anyhow, Context, Result};
 use tower::{Service, ServiceBuilder, ServiceExt};
 use tower_http::decompression::{Decompression, DecompressionLayer};
 use tracing::debug;

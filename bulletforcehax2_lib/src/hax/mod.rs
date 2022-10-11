@@ -8,7 +8,7 @@ use futures_util::lock::Mutex;
 use tokio::sync::mpsc::Receiver;
 use tracing::{debug, info, warn};
 
-use crate::proxy::websocket_proxy::WebSocketProxy;
+use crate::proxy::{websocket_proxy::WebSocketProxy, WebSocketServer};
 
 /// An instance of BulletForceHaxV2. It handles the webrequest and websocket proxies as well as the internal state.
 ///
@@ -86,9 +86,9 @@ impl BulletForceHax {
         mut new_connection_recv: Receiver<WebSocketProxy>,
     ) {
         while let Some(mut conn) = new_connection_recv.recv().await {
-            match conn.get_port() {
+            match conn.get_server() {
                 // lobby
-                2053 => {
+                Some(WebSocketServer::LobbyServer) => {
                     let notify_closed = conn.take_notify_closed();
 
                     let state = state.clone();
@@ -119,7 +119,7 @@ impl BulletForceHax {
                     }
                 }
                 // gameplay
-                2083 => {
+                Some(WebSocketServer::GameServer) => {
                     let notify_closed = conn.take_notify_closed();
 
                     let state = state.clone();
@@ -149,7 +149,10 @@ impl BulletForceHax {
                         None => warn!("A gameplay websocket task was created but no closed Notify was found. Detecting socket closing will not work"),
                     }
                 }
-                p => warn!("WebSocket connection initiated over unknown target port {p}"),
+                None => warn!(
+                    "WebSocket connection initiated over unknown target port {}",
+                    conn.get_port()
+                ),
             }
         }
 

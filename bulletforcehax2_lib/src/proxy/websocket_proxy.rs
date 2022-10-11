@@ -11,6 +11,7 @@ use tokio::sync::{mpsc, oneshot, Notify};
 use tokio_tungstenite::tungstenite::{handshake::server::Callback, Message};
 use tracing::{debug, error, info, info_span, trace, Instrument};
 
+use super::{Direction, WebSocketServer};
 use crate::hax::HaxState;
 
 type SocketStream =
@@ -18,7 +19,6 @@ type SocketStream =
 type SocketSink =
     Box<dyn Sink<Message, Error = tokio_tungstenite::tungstenite::error::Error> + Unpin + Send>;
 
-#[allow(dead_code)]
 /// A struct holding a conceptual websocket proxy connection
 pub struct WebSocketProxy {
     /// a sink to allow sending messages to the client at arbitrary times
@@ -27,8 +27,10 @@ pub struct WebSocketProxy {
     server_send: Arc<Mutex<SocketSink>>,
 
     /// a handle to the task that controls client->server communication
+    #[allow(dead_code)]
     client_to_server: tokio::task::JoinHandle<()>,
     /// a handle to the task that controls server->client communication
+    #[allow(dead_code)]
     server_to_client: tokio::task::JoinHandle<()>,
 
     port: u16,
@@ -36,21 +38,26 @@ pub struct WebSocketProxy {
     notify_closed: Option<Arc<Notify>>,
 }
 
-#[allow(dead_code)]
 impl WebSocketProxy {
     pub fn get_port(&self) -> u16 {
         self.port
+    }
+
+    pub fn get_server(&self) -> Option<WebSocketServer> {
+        WebSocketServer::from_port(self.port)
     }
 
     pub(crate) fn take_notify_closed(&mut self) -> Option<Arc<Notify>> {
         self.notify_closed.take()
     }
 
+    #[allow(dead_code)]
     pub async fn send_client(&self, message: Message) -> anyhow::Result<()> {
         self.client_send.lock().await.send(message).await?;
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub async fn send_server(&self, message: Message) -> anyhow::Result<()> {
         self.server_send.lock().await.send(message).await?;
         Ok(())
@@ -117,6 +124,7 @@ async fn accept_connection(
         hyper::Uri::from_str(query_string)
             .with_context(|| "WebSocket handshake query string did not contain valid uri")?
     };
+    let target_port = target_uri.port_u16().unwrap_or(0);
 
     info!("New WebSocket connection from {addr} for uri {target_uri}");
 
@@ -153,14 +161,16 @@ async fn accept_connection(
     let client_to_server = start_proxy_task(
         Box::new(client_recv),
         server_send.clone(),
-        "c->s",
+        target_port,
+        Direction::ClientToServer,
         notify_closed.clone(),
         shared_state.clone(),
     );
     let server_to_client = start_proxy_task(
         Box::new(server_recv),
         client_send.clone(),
-        "s->c",
+        target_port,
+        Direction::ServerToClient,
         notify_closed.clone(),
         shared_state.clone(),
     );
@@ -178,11 +188,16 @@ async fn accept_connection(
 fn start_proxy_task(
     mut stream: SocketStream,
     sink: Arc<Mutex<SocketSink>>,
-    direction: &'static str,
+    server_port: u16,
+    direction: Direction,
     notify_closed: Arc<Notify>,
     shared_state: Arc<Mutex<HaxState>>,
 ) -> tokio::task::JoinHandle<()> {
-    let span = info_span!("WebSocketProxy", direction);
+    let server = WebSocketServer::from_port(server_port);
+    let span = match server {
+        Some(server) => info_span!("WebSocketProxy", "{} {}", server, direction),
+        None => info_span!("WebSocketProxy", "port:{} {}", server_port, direction),
+    };
     tokio::spawn(
         async move {
             while let Some(message) = stream.next().await {
@@ -190,11 +205,19 @@ fn start_proxy_task(
                 let mut message = message.unwrap();
                 trace!("Message: {:?}", message);
 
-                // TODO: install proper hook
-                if let Message::Binary(b) = &mut message {
-                    let result = HaxState::websocket_hook(shared_state.clone(), b, direction);
-                    if let Err(e) = result {
-                        error!("Error during websocket hook handler: {}", e);
+                // handle hook
+                if let Some(server) = server {
+                    // TODO: install proper hook
+                    if let Message::Binary(bytes) = &mut message {
+                        let result = HaxState::websocket_hook(
+                            shared_state.clone(),
+                            bytes,
+                            server,
+                            direction,
+                        );
+                        if let Err(e) = result {
+                            error!("Error during websocket hook handler: {}", e);
+                        }
                     }
                 }
 
