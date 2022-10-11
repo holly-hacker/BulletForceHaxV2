@@ -2,12 +2,14 @@ use std::sync::Arc;
 
 use futures_util::lock::Mutex;
 use photon_lib::{
+    highlevel::{
+        constants::{event_code, operation_code, parameter_code},
+        gameplay::Player,
+        lobby::{RoomInfo, RoomInfoList},
+        PhotonMapConversion, PhotonParameterMapConversion,
+    },
     photon_data_type::PhotonDataType,
     photon_message::PhotonMessage,
-    realtime::{
-        constants::{event_code, operation_code, parameter_code},
-        PhotonMapConversion, PhotonParameterMapConversion, Player, RoomInfo, RoomInfoList,
-    },
 };
 use tracing::{debug, info, trace, warn};
 

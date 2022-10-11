@@ -18,7 +18,7 @@ macro_rules! impl_u8_map_conversion {
                 )*
             }
 
-            impl PhotonParameterMapConversion for $type_name {
+            impl crate::highlevel::PhotonParameterMapConversion for $type_name {
                 fn from_map(properties: &mut indexmap::IndexMap<u8, PhotonDataType>) -> Self {
                     $type_name {
                         $(
@@ -66,7 +66,7 @@ macro_rules! impl_photon_map_conversion {
                 pub custom_properties: indexmap::IndexMap<String, PhotonDataType>,
             }
 
-            impl PhotonMapConversion for $type_name {
+            impl crate::highlevel::PhotonMapConversion for $type_name {
                 fn from_map(properties: &mut indexmap::IndexMap<PhotonDataType, PhotonDataType>) -> Self {
                     $type_name {
                         $(

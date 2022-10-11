@@ -1,4 +1,4 @@
-//! Event codes for [EventData].
+//! Event codes for [crate::photon_message::EventData].
 
 /// (230) Initial list of RoomInfos (in lobby on Master)
 pub const GAME_LIST: u8 = 230;

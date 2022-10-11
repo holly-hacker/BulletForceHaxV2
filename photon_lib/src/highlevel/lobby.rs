@@ -1,23 +1,7 @@
-//! Implements high-level types PhotonRealtime.
-
-pub mod constants;
-#[macro_use]
-mod macro_impl;
-
 use indexmap::IndexMap;
 
-use self::constants::{actor_properties, game_property_key, parameter_code};
+use crate::highlevel::constants::{game_property_key, parameter_code};
 use crate::photon_data_type::PhotonDataType;
-
-pub trait PhotonParameterMapConversion {
-    fn from_map(properties: &mut IndexMap<u8, PhotonDataType>) -> Self;
-    fn into_map(self, map: &mut IndexMap<u8, PhotonDataType>);
-}
-
-pub trait PhotonMapConversion {
-    fn from_map(properties: &mut IndexMap<PhotonDataType, PhotonDataType>) -> Self;
-    fn into_map(self, map: &mut IndexMap<PhotonDataType, PhotonDataType>);
-}
 
 impl_u8_map_conversion! {
     RoomInfoList {
@@ -63,17 +47,6 @@ impl_photon_map_conversion! {
         #[PhotonDataType::Byte(game_property_key::PLAYER_TTL) => PhotonDataType::Integer]
         player_ttl: i32,
     }
-
-    Player {
-        #[PhotonDataType::Byte(actor_properties::PLAYER_NAME) => PhotonDataType::String]
-        nickname: String,
-
-        #[PhotonDataType::Byte(actor_properties::USER_ID) => PhotonDataType::String]
-        user_id: String,
-
-        #[PhotonDataType::Byte(actor_properties::IS_INACTIVE) => PhotonDataType::Boolean]
-        is_inactive: bool,
-    }
 }
 
 #[cfg(test)]
@@ -81,9 +54,10 @@ mod tests {
     use indexmap::{indexmap, IndexMap};
     use ordered_float::OrderedFloat;
 
-    use super::constants::game_property_key;
+    use crate::highlevel::constants::game_property_key;
+    use crate::highlevel::lobby::RoomInfo;
+    use crate::highlevel::PhotonMapConversion;
     use crate::photon_data_type::PhotonDataType;
-    use crate::realtime::{PhotonMapConversion, RoomInfo};
 
     #[test]
     fn room_info() {
