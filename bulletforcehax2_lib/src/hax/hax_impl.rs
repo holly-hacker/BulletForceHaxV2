@@ -41,7 +41,7 @@ impl HaxState {
     pub fn websocket_hook(
         hax: Arc<Mutex<Self>>,
         data: &mut Vec<u8>,
-        _server: WebSocketServer,
+        server: WebSocketServer,
         direction: Direction,
     ) -> anyhow::Result<()> {
         let mut photon_message = PhotonMessage::from_websocket_bytes(&mut data.as_slice())?;
@@ -64,8 +64,20 @@ impl HaxState {
             trace!("{direction} data: {photon_message:?}");
         }
 
-        // TODO: check if on lobby socket
-        match &mut photon_message {
+        match server {
+            WebSocketServer::LobbyServer => Self::match_packet_lobby(hax, &mut photon_message),
+            WebSocketServer::GameServer => Self::match_packet_game(hax, &mut photon_message),
+        }
+
+        let mut buf: Vec<u8> = vec![];
+        photon_message.to_websocket_bytes(&mut buf)?;
+        *data = buf;
+
+        Ok(())
+    }
+
+    fn match_packet_lobby(hax: Arc<Mutex<Self>>, photon_message: &mut PhotonMessage) {
+        match photon_message {
             PhotonMessage::OperationRequest(operation_request) => {
                 #[allow(clippy::single_match)]
                 match operation_request.operation_code {
@@ -146,6 +158,16 @@ impl HaxState {
 
                     game_list.into_map(&mut event.parameters);
                 }
+                _ => (),
+            },
+            _ => (),
+        }
+    }
+
+    fn match_packet_game(_hax: Arc<Mutex<Self>>, photon_message: &mut PhotonMessage) {
+        match photon_message {
+            PhotonMessage::OperationRequest(_operation_request) => {}
+            PhotonMessage::EventData(event) => match event.code {
                 event_code::JOIN => {
                     let props = event.parameters.get_mut(&parameter_code::PLAYER_PROPERTIES);
 
@@ -165,12 +187,6 @@ impl HaxState {
             // unhandled
             _ => (),
         }
-
-        let mut buf: Vec<u8> = vec![];
-        photon_message.to_websocket_bytes(&mut buf)?;
-        *data = buf;
-
-        Ok(())
     }
 }
 
