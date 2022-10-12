@@ -6,6 +6,8 @@ mod impl_websocket;
 
 use std::sync::Arc;
 
+use photon_lib::{highlevel::gameplay::Player, indexmap::IndexMap};
+
 use crate::proxy::websocket_proxy::WebSocketProxy;
 
 /// An instance of BulletForceHaxV2. It handles the webrequest and websocket proxies as well as the internal state.
@@ -30,6 +32,8 @@ pub struct HaxState {
     // info
     pub user_id: Option<String>,
     pub game_version: Option<String>,
+    pub player_id: Option<i32>,
+    pub players: IndexMap<i32, Player>,
 
     // features
     pub show_mobile_games: bool,

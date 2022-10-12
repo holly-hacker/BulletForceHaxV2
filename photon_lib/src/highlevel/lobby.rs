@@ -5,7 +5,7 @@ use crate::photon_data_type::PhotonDataType;
 
 impl_u8_map_conversion! {
     RoomInfoList {
-        #[parameter_code::GAME_LIST => PhotonDataType::Hashtable]
+        [parameter_code::GAME_LIST => PhotonDataType::Hashtable]
         games: IndexMap<PhotonDataType, PhotonDataType>,
     }
 }
@@ -14,37 +14,37 @@ impl_u8_map_conversion! {
 impl_photon_map_conversion! {
     #[derive(Debug, Clone, PartialEq, Eq)]
     RoomInfo {
-        #[PhotonDataType::Byte(game_property_key::REMOVED) => PhotonDataType::Boolean]
+        [PhotonDataType::Byte(game_property_key::REMOVED) => PhotonDataType::Boolean]
         removed: bool,
 
-        #[PhotonDataType::Byte(game_property_key::MAX_PLAYERS) => PhotonDataType::Byte]
+        [PhotonDataType::Byte(game_property_key::MAX_PLAYERS) => PhotonDataType::Byte]
         max_players: u8,
 
-        #[PhotonDataType::Byte(game_property_key::IS_OPEN) => PhotonDataType::Boolean]
+        [PhotonDataType::Byte(game_property_key::IS_OPEN) => PhotonDataType::Boolean]
         is_open: bool,
 
-        #[PhotonDataType::Byte(game_property_key::IS_VISIBLE) => PhotonDataType::Boolean]
+        [PhotonDataType::Byte(game_property_key::IS_VISIBLE) => PhotonDataType::Boolean]
         is_visible: bool,
 
-        #[PhotonDataType::Byte(game_property_key::PLAYER_COUNT) => PhotonDataType::Byte]
+        [PhotonDataType::Byte(game_property_key::PLAYER_COUNT) => PhotonDataType::Byte]
         player_count: u8,
 
-        #[PhotonDataType::Byte(game_property_key::CLEANUP_CACHE_ON_LEAVE) => PhotonDataType::Boolean]
+        [PhotonDataType::Byte(game_property_key::CLEANUP_CACHE_ON_LEAVE) => PhotonDataType::Boolean]
         cleanup_cache_on_leave: bool,
 
-        #[PhotonDataType::Byte(game_property_key::MASTER_CLIENT_ID) => PhotonDataType::Integer]
+        [PhotonDataType::Byte(game_property_key::MASTER_CLIENT_ID) => PhotonDataType::Integer]
         master_client_id: i32,
 
-        #[PhotonDataType::Byte(game_property_key::PROPS_LISTED_IN_LOBBY) => PhotonDataType::StringArray]
+        [PhotonDataType::Byte(game_property_key::PROPS_LISTED_IN_LOBBY) => PhotonDataType::StringArray]
         props_listed_in_lobby: Vec<String>,
 
-        #[PhotonDataType::Byte(game_property_key::EXPECTED_USERS) => PhotonDataType::StringArray]
+        [PhotonDataType::Byte(game_property_key::EXPECTED_USERS) => PhotonDataType::StringArray]
         expected_users: Vec<String>,
 
-        #[PhotonDataType::Byte(game_property_key::EMPTY_ROOM_TTL) => PhotonDataType::Integer]
+        [PhotonDataType::Byte(game_property_key::EMPTY_ROOM_TTL) => PhotonDataType::Integer]
         empty_room_ttl: i32,
 
-        #[PhotonDataType::Byte(game_property_key::PLAYER_TTL) => PhotonDataType::Integer]
+        [PhotonDataType::Byte(game_property_key::PLAYER_TTL) => PhotonDataType::Integer]
         player_ttl: i32,
     }
 }

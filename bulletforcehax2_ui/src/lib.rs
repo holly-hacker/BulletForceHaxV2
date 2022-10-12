@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
 use bulletforcehax2_lib::hax::HaxState;
+use egui::RichText;
+use egui_extras::{Size, TableBuilder};
 use futures_util::lock::Mutex;
 
 pub struct BulletForceHaxMenu {
@@ -67,6 +69,41 @@ impl BulletForceHaxMenu {
                 }
             });
             ui.add_space(16f32);
+
+            if hax.gameplay_socket.is_some() {
+                ui.heading("Info - Players");
+                {
+                    TableBuilder::new(ui)
+                        .striped(true)
+                        .column(Size::initial(45.0))
+                        .column(Size::remainder())
+                        .resizable(true)
+                        .header(20.0, |mut header| {
+                            header.col(|ui| {
+                                ui.label(RichText::new("ActorId").strong());
+                            });
+                            header.col(|ui| {
+                                ui.label(RichText::new("Name").strong());
+                            });
+                        })
+                        .body(|mut body| {
+                            for (actor_id, player) in &hax.players {
+                                body.row(18.0, |mut row| {
+                                    row.col(|ui| {
+                                        ui.label(actor_id.to_string());
+                                    });
+                                    row.col(|ui| {
+                                        ui.label(match &player.nickname {
+                                            Some(x) => x.as_str(),
+                                            None => "",
+                                        });
+                                    });
+                                });
+                            }
+                        });
+                }
+                ui.add_space(16f32);
+            }
 
             #[cfg(debug_assertions)]
             {

@@ -1,19 +1,21 @@
 macro_rules! impl_u8_map_conversion {
     (
         $(
-            $(#[$attr:meta])*
+            $(#[$type_attr:meta])*
             $type_name:ident {
                 $(
-                    #[$map_key:expr => $map_value:path]
+                    $(#[$field_attr:meta])*
+                    [$map_key:expr => $map_value:path]
                     $field_name:ident: $field_type:ty,
                 )*
             }
         )*
     ) => {
         $(
-            $(#[$attr])*
+            $(#[$type_attr])*
             pub struct $type_name {
                 $(
+                    $(#[$field_attr])*
                     pub $field_name: Option<$field_type>,
                 )*
             }
@@ -47,19 +49,21 @@ macro_rules! impl_u8_map_conversion {
 macro_rules! impl_photon_map_conversion {
     (
         $(
-            $(#[$attr:meta])*
+            $(#[$type_attr:meta])*
             $type_name:ident {
                 $(
-                    #[$photon_key:expr => $photon_value:path]
+                    $(#[$field_attr:meta])*
+                    [$photon_key:expr => $photon_value:path]
                     $field_name:ident: $field_type:ty,
                 )*
             }
         )*
     ) => {
         $(
-            $(#[$attr])*
+            $(#[$type_attr])*
             pub struct $type_name {
                 $(
+                    $(#[$field_attr])*
                     pub $field_name: Option<$field_type>,
                 )*
 

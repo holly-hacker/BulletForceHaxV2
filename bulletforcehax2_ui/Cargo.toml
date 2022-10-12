@@ -11,4 +11,5 @@ bulletforcehax2_lib = { path = "../bulletforcehax2_lib" }
 futures = { version = "0.3", features = ["executor"] }
 futures-util = "0.3"
 egui = "0.19"
+egui_extras = "0.19"
 tracing = "0.1"

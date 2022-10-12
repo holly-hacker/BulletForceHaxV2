@@ -4,7 +4,7 @@ use futures_util::lock::Mutex;
 use photon_lib::{
     highlevel::{
         constants::{event_code, operation_code, parameter_code},
-        gameplay::Player,
+        gameplay::{JoinGame, JoinGameResponse, Player},
         lobby::{RoomInfo, RoomInfoList},
         PhotonMapConversion, PhotonParameterMapConversion,
     },
@@ -164,9 +164,52 @@ impl HaxState {
         }
     }
 
-    fn match_packet_game(_hax: Arc<Mutex<Self>>, photon_message: &mut PhotonMessage) {
+    fn match_packet_game(hax: Arc<Mutex<Self>>, photon_message: &mut PhotonMessage) {
         match photon_message {
-            PhotonMessage::OperationRequest(_operation_request) => {}
+            PhotonMessage::OperationRequest(operation_request) => {
+                match operation_request.operation_code {
+                    operation_code::JOIN_GAME => {
+                        let props = &mut operation_request.parameters;
+                        let req = JoinGame::from_map(props);
+                        debug!("Game Join Request: {req:?}");
+                        req.into_map(props);
+                    }
+                    _ => (),
+                }
+            }
+            PhotonMessage::OperationResponse(operation_response) => {
+                match operation_response.operation_code {
+                    operation_code::JOIN_GAME if operation_response.return_code == 0 => {
+                        let props = &mut operation_response.parameters;
+                        let mut resp = JoinGameResponse::from_map(props);
+                        debug!("Game Join Response: {resp:?}");
+                        if let Some(player_props) = &mut resp.player_properties {
+                            let mut hax = futures::executor::block_on(hax.lock());
+
+                            hax.player_id = resp.actor_nr;
+
+                            for (key, value) in player_props {
+                                let actor_id = match key {
+                                    PhotonDataType::Integer(key) => *key,
+                                    _ => continue,
+                                };
+                                let actor_props = match value {
+                                    PhotonDataType::Hashtable(actor_props) => actor_props,
+                                    _ => continue,
+                                };
+                                let actor_info = Player::from_map(&mut actor_props.clone());
+
+                                debug!(actor_id, "Found new actor");
+                                hax.players.insert(actor_id, actor_info);
+                            }
+                        }
+
+                        // todo
+                        resp.into_map(props);
+                    }
+                    _ => (),
+                }
+            }
             PhotonMessage::EventData(event) => match event.code {
                 event_code::JOIN => {
                     let props = event.parameters.get_mut(&parameter_code::PLAYER_PROPERTIES);
