@@ -1,9 +1,33 @@
-/// ObsoleteO Exchanging encrpytion keys is done internally in the lib now. Don't expect this operation-result.
-pub const EXCHANGE_KEYS_FOR_ENCRYPTION: u8 = 250;
+//! Codes describing different operations for [OperationRequest] and [OperationResponse].
+//!
+//! Note that the documentation and deprecation attributes come from Photon with only minor edits.
+
+#[allow(unused)]
+use crate::photon_message::{OperationRequest, OperationResponse};
 
 /// (255) Code for OpJoin, to get into a room.
-/// Obsolete
+#[deprecated]
 pub const JOIN: u8 = 255;
+
+/// (254) Code for OpLeave, to get out of a room.
+pub const LEAVE: u8 = 254;
+
+/// (253) Raise event (in a room, for other actors/players)
+pub const RAISE_EVENT: u8 = 253;
+
+/// (252) Set Properties (of room or actor/player)
+pub const SET_PROPERTIES: u8 = 252;
+
+/// (251) Get Properties
+pub const GET_PROPERTIES: u8 = 251;
+
+#[deprecated(
+    note = "Exchanging encrpytion keys is done internally in the lib now. Don't expect this operation-result."
+)]
+pub const EXCHANGE_KEYS_FOR_ENCRYPTION: u8 = 250;
+
+/// (248) Operation code to change interest groups in Rooms (Lite application and extending ones).
+pub const CHANGE_GROUPS: u8 = 248;
 
 /// (231) Authenticates this peer and connects to a virtual application
 pub const AUTHENTICATE_ONCE: u8 = 231;
@@ -26,23 +50,10 @@ pub const JOIN_GAME: u8 = 226;
 /// (225) Joins random game (on master)
 pub const JOIN_RANDOM_GAME: u8 = 225;
 
-/// obsolete, cause JoinRandom no longer is a "process". now provides result immediately
+#[deprecated(
+    note = "obsolete, cause JoinRandom no longer is a \"process\". now provides result immediately"
+)]
 pub const CANCEL_JOIN_RANDOM: u8 = 224;
-
-/// (254) Code for OpLeave, to get out of a room.
-pub const LEAVE: u8 = 254;
-
-/// (253) Raise event (in a room, for other actors/players)
-pub const RAISE_EVENT: u8 = 253;
-
-/// (252) Set Properties (of room or actor/player)
-pub const SET_PROPERTIES: u8 = 252;
-
-/// (251) Get Properties
-pub const GET_PROPERTIES: u8 = 251;
-
-/// (248) Operation code to change interest groups in Rooms (Lite application and extending ones).
-pub const CHANGE_GROUPS: u8 = 248;
 
 /// (222) Request the rooms and online status for a list of friends (by name, which should be unique).
 pub const FIND_FRIENDS: u8 = 222;

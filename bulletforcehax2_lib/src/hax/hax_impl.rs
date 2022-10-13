@@ -181,7 +181,7 @@ impl HaxState {
                     operation_code::JOIN_GAME => {
                         let props = &mut operation_request.parameters;
                         let req = JoinGame::from_map(props);
-                        debug!("Game Join Request: {req:?}");
+                        debug!(request = format!("req:?"), "Game Join Request");
                         req.into_map(props);
                     }
                     _ => (),
@@ -192,7 +192,7 @@ impl HaxState {
                     operation_code::JOIN_GAME if operation_response.return_code == 0 => {
                         let props = &mut operation_response.parameters;
                         let mut resp = JoinGameResponse::from_map(props);
-                        debug!("Game Join Response: {resp:?}");
+                        debug!(response = format!("resp:?"), "Game Join Response");
                         if let Some(player_props) = &mut resp.player_properties {
                             let mut hax = futures::executor::block_on(hax.lock());
 
