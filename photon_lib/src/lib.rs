@@ -1,3 +1,6 @@
+//! This library aims to help with parsing Photon Unity Networking v1.99 network packets. Other versions may work but
+//! are unsupported.
+
 pub mod highlevel;
 pub mod photon_data_type;
 pub mod photon_message;
