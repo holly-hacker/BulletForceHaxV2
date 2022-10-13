@@ -31,9 +31,9 @@ cat bfhax_data/logs/log_20221013_120000.json | jq -r '.fields | select(.message_
 ```
 
 ## Nushell
-If you use Nushell, you can source the `commands.nu` file to get the `find_log` command:
+If you use Nushell, you can source the `commands.nu` file to get the `bfh_find_packet` command:
 ```nu
-C:\Users\HoLLy\Projects\Rust\BulletForceHaxV2〉find_log EventData 229 | get 0
+C:\Users\HoLLy\Projects\Rust\BulletForceHaxV2〉bfh_find_packet EventData 229 | get 0
 EventData(
     EventData {
         code: 229,
