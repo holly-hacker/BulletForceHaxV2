@@ -16,6 +16,33 @@ flowchart TD
     bulletforcehax2_lib --> photon_lib
 ```
 
+# Figuring out packet structure
+
+Requirements:
+- [jq](https://stedolan.github.io/jq/)
+- [Nushell](https://www.nushell.sh/) (optional)
+
+In debug builds, the BulletForceHax app will log all incoming and outgoing messages to its json logs. You can read and filter them using [jq](https://stedolan.github.io/jq/).
+
+
+For example, to find all EventData messages with code 229
+```sh
+cat bfhax_data/logs/log_20221013_120000.json | jq -r '.fields | select(.message_code == 229 and .message_type == "EventData") | .message_data'
+```
+
+## Nushell
+If you use Nushell, you can source the `commands.nu` file to get the `find_log` command:
+```nu
+C:\Users\HoLLy\Projects\Rust\BulletForceHaxV2〉find_log EventData 229 | get 0
+EventData(
+    EventData {
+        code: 229,
+        parameters: {
+            222: Hashtable(
+```
+
+NOTE: the dependency on `jq` can probably be removed when using nu. If you're reading this, feel free to open a PR :)
+
 # Checking code coverage
 Requirements:
 - Just (`cargo install just` or [install as package](https://just.systems/man/en/chapter_4.html))

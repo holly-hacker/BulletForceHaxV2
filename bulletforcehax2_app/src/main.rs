@@ -215,7 +215,6 @@ fn init_logging() -> tracing_appender::non_blocking::WorkerGuard {
     let console_layer = {
         tracing_subscriber::fmt::layer()
             .with_writer(std::io::stdout)
-            .compact()
             .with_filter(filter.clone())
             .with_filter(LevelFilter::from_level(logging_level_console))
     };

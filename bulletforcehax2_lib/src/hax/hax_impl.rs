@@ -60,8 +60,18 @@ impl HaxState {
         };
 
         if let Some((name, code)) = debug_info {
-            debug!("{direction} {name} {code}");
-            trace!("{direction} data: {photon_message:?}");
+            debug!(name, code, direction = format!("{direction}"), "Message");
+
+            // We're logging message_data with "full" formatting here.
+            // It's a trace log which should only be logged to file and accessed in a structured
+            // manner such as through json.
+            trace!(
+                message_type = name,
+                message_code = code,
+                message_data = format!("{photon_message:#?}"),
+                direction = format!("{direction}"),
+                "Message data"
+            );
         }
 
         match server {
