@@ -9,13 +9,12 @@ use std::cmp::Ordering;
 
 use bytes::{Buf, BufMut};
 use derivative::Derivative;
-use indexmap::IndexMap;
 use ordered_float::OrderedFloat;
 
 use crate::{
     check_remaining,
     photon_message::{EventData, OperationRequest, OperationResponse},
-    ReadError, WriteError,
+    PhotonHashmap, ReadError, WriteError,
 };
 
 /// A serialized .NET object
@@ -28,8 +27,7 @@ pub enum PhotonDataType {
     /// Data type 0x44, holds a `Dictionary<TKey, TValue>`. Because this dictionary is generic, we need to store the key and value kind as well.
     Dictionary(
         (u8, u8),
-        #[derivative(Hash(hash_with = "crate::utils::derive_utils::hash_indexmap"))]
-        IndexMap<PhotonDataType, PhotonDataType>,
+        #[derivative(Hash(hash_with = "crate::utils::derive_utils::hash_indexmap"))] PhotonHashmap,
     ),
     /// Data type 0x61, holds a `string[]`.
     StringArray(Vec<String>),
@@ -45,8 +43,7 @@ pub enum PhotonDataType {
     Float(OrderedFloat<f32>),
     /// Data type 0x68, holds a photon Hashtable. This hashtable aims to mimic `System.Collections.Hashtable`.
     Hashtable(
-        #[derivative(Hash(hash_with = "crate::utils::derive_utils::hash_indexmap"))]
-        IndexMap<PhotonDataType, PhotonDataType>,
+        #[derivative(Hash(hash_with = "crate::utils::derive_utils::hash_indexmap"))] PhotonHashmap,
     ),
     /// Data type 0x69, holds an `int`
     Integer(i32),

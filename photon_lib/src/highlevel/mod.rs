@@ -7,18 +7,16 @@ pub mod constants;
 pub mod gameplay;
 pub mod lobby;
 
-use indexmap::IndexMap;
-
-use crate::photon_data_type::PhotonDataType;
+use crate::{ParameterMap, PhotonHashmap};
 
 /// Allows conversion between a type and a photon hashmap with byte keys.
 pub trait PhotonParameterMapConversion {
-    fn from_map(properties: &mut IndexMap<u8, PhotonDataType>) -> Self;
-    fn into_map(self, map: &mut IndexMap<u8, PhotonDataType>);
+    fn from_map(properties: &mut ParameterMap) -> Self;
+    fn into_map(self, map: &mut ParameterMap);
 }
 
 /// Allows conversion between a type and a photon hashmap.
 pub trait PhotonMapConversion {
-    fn from_map(properties: &mut IndexMap<PhotonDataType, PhotonDataType>) -> Self;
-    fn into_map(self, map: &mut IndexMap<PhotonDataType, PhotonDataType>);
+    fn from_map(properties: &mut PhotonHashmap) -> Self;
+    fn into_map(self, map: &mut PhotonHashmap);
 }

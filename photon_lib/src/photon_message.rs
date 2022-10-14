@@ -9,7 +9,9 @@ use bytes::{Buf, BufMut};
 use derivative::Derivative;
 use indexmap::IndexMap;
 
-use crate::{check_remaining, photon_data_type::PhotonDataType, ReadError, WriteError};
+use crate::{
+    check_remaining, photon_data_type::PhotonDataType, ParameterMap, ReadError, WriteError,
+};
 
 /// Describes a low-level message that comes in or goes out over the wire.
 ///
@@ -190,7 +192,7 @@ impl PingResult {
 pub struct OperationRequest {
     pub operation_code: u8,
     #[derivative(Hash(hash_with = "crate::utils::derive_utils::hash_indexmap"))]
-    pub parameters: IndexMap<u8, PhotonDataType>,
+    pub parameters: ParameterMap,
 }
 
 impl OperationRequest {
@@ -219,7 +221,7 @@ pub struct OperationResponse {
     pub return_code: i16,
     pub debug_message: Option<String>,
     #[derivative(Hash(hash_with = "crate::utils::derive_utils::hash_indexmap"))]
-    pub parameters: IndexMap<u8, PhotonDataType>,
+    pub parameters: ParameterMap,
 }
 
 impl OperationResponse {
@@ -265,7 +267,7 @@ impl OperationResponse {
 pub struct EventData {
     pub code: u8,
     #[derivative(Hash(hash_with = "crate::utils::derive_utils::hash_indexmap"))]
-    pub parameters: IndexMap<u8, PhotonDataType>,
+    pub parameters: ParameterMap,
     // protocol 18 has a `sender` and `custom data` field, but we only support protocol 16 for now
 }
 
@@ -291,7 +293,7 @@ pub struct DisconnectMessage {
     pub code: i16,
     pub debug_message: Option<String>,
     #[derivative(Hash(hash_with = "crate::utils::derive_utils::hash_indexmap"))]
-    pub parameters: IndexMap<u8, PhotonDataType>,
+    pub parameters: ParameterMap,
 }
 
 impl DisconnectMessage {
@@ -329,9 +331,7 @@ impl DisconnectMessage {
     }
 }
 
-fn deserialize_parameter_dictionary(
-    bytes: &mut impl Buf,
-) -> Result<IndexMap<u8, PhotonDataType>, ReadError> {
+fn deserialize_parameter_dictionary(bytes: &mut impl Buf) -> Result<ParameterMap, ReadError> {
     check_remaining!(bytes, 2);
     let params_count = bytes.get_i16();
     let mut parameters = IndexMap::with_capacity(params_count as usize);
@@ -344,7 +344,7 @@ fn deserialize_parameter_dictionary(
 
 fn serialize_parameter_dictionary(
     buf: &mut impl BufMut,
-    map: &IndexMap<u8, PhotonDataType>,
+    map: &ParameterMap,
 ) -> Result<(), WriteError> {
     if map.len() > i16::MAX as usize {
         return Err(WriteError::ValueTooLarge("Custom Data"));

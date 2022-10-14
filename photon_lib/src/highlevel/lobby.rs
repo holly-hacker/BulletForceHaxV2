@@ -1,12 +1,11 @@
-use indexmap::IndexMap;
-
 use crate::highlevel::constants::{game_property_key, parameter_code};
 use crate::photon_data_type::PhotonDataType;
+use crate::PhotonHashmap;
 
 impl_u8_map_conversion! {
     RoomInfoList {
         [parameter_code::GAME_LIST => PhotonDataType::Hashtable]
-        games: IndexMap<PhotonDataType, PhotonDataType>,
+        games: PhotonHashmap,
     }
 }
 

@@ -21,7 +21,7 @@ macro_rules! impl_u8_map_conversion {
             }
 
             impl crate::highlevel::PhotonParameterMapConversion for $type_name {
-                fn from_map(properties: &mut indexmap::IndexMap<u8, PhotonDataType>) -> Self {
+                fn from_map(properties: &mut crate::ParameterMap) -> Self {
                     $type_name {
                         $(
                             // NOTE: we need to use `shift_remove` to retain order for custom_properties later
@@ -34,7 +34,7 @@ macro_rules! impl_u8_map_conversion {
                     }
                 }
 
-                fn into_map(mut self, map: &mut indexmap::IndexMap<u8, PhotonDataType>) {
+                fn into_map(mut self, map: &mut crate::ParameterMap) {
                     $(
                         if let Some(b) = self.$field_name.take() {
                             map.insert($map_key, $map_value(b));
@@ -71,7 +71,7 @@ macro_rules! impl_photon_map_conversion {
             }
 
             impl crate::highlevel::PhotonMapConversion for $type_name {
-                fn from_map(properties: &mut indexmap::IndexMap<PhotonDataType, PhotonDataType>) -> Self {
+                fn from_map(properties: &mut crate::PhotonHashmap) -> Self {
                     $type_name {
                         $(
                             // NOTE: we need to use `shift_remove` to retain order for custom_properties later
@@ -103,7 +103,7 @@ macro_rules! impl_photon_map_conversion {
                     }
                 }
 
-                fn into_map(mut self, map: &mut indexmap::IndexMap<PhotonDataType, PhotonDataType>) {
+                fn into_map(mut self, map: &mut crate::PhotonHashmap) {
                     $(
                         if let Some(b) = self.$field_name.take() {
                             map.insert($photon_key, $photon_value(b));

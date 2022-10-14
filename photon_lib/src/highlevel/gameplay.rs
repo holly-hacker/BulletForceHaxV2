@@ -1,7 +1,6 @@
-use indexmap::IndexMap;
-
 use crate::highlevel::constants::{actor_properties, parameter_code};
 use crate::photon_data_type::PhotonDataType;
+use crate::PhotonHashmap;
 
 impl_u8_map_conversion! {
     #[derive(Debug)]
@@ -10,17 +9,17 @@ impl_u8_map_conversion! {
         room_name: String,
 
         [parameter_code::PROPERTIES => PhotonDataType::Hashtable]
-        properties: IndexMap<PhotonDataType, PhotonDataType>,
+        properties: PhotonHashmap,
 
         [parameter_code::BROADCAST => PhotonDataType::Boolean]
         broadcast: bool,
 
         [parameter_code::PLAYER_PROPERTIES => PhotonDataType::Hashtable]
-        player_properties: IndexMap<PhotonDataType, PhotonDataType>,
+        player_properties: PhotonHashmap,
 
         /// A serialized instance of [crate::highlevel::lobby::RoomInfo]
         [parameter_code::GAME_PROPERTIES => PhotonDataType::Hashtable]
-        game_properties: IndexMap<PhotonDataType, PhotonDataType>,
+        game_properties: PhotonHashmap,
 
         [parameter_code::CLEANUP_CACHE_ON_LEAVE => PhotonDataType::Boolean]
         cleanup_cache_on_leave: bool,
@@ -72,11 +71,11 @@ impl_u8_map_conversion! {
 
         /// A hashmap over serialized [Player]s
         [parameter_code::PLAYER_PROPERTIES => PhotonDataType::Hashtable]
-        player_properties: IndexMap<PhotonDataType, PhotonDataType>,
+        player_properties: PhotonHashmap,
 
         /// A serialized instance of [crate::highlevel::lobby::RoomInfo]
         [parameter_code::GAME_PROPERTIES => PhotonDataType::Hashtable]
-        game_properties: IndexMap<PhotonDataType, PhotonDataType>,
+        game_properties: PhotonHashmap,
 
         [parameter_code::ADDRESS => PhotonDataType::String]
         address: String,

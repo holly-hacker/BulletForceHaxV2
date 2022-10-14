@@ -7,7 +7,9 @@ pub mod photon_message;
 pub(crate) mod utils;
 
 pub use indexmap;
+use indexmap::IndexMap;
 pub use ordered_float;
+use photon_data_type::PhotonDataType;
 use thiserror::Error;
 
 // TODO: perhaps add info on where the error occured?
@@ -20,6 +22,12 @@ macro_rules! check_remaining {
 }
 
 pub(crate) use check_remaining;
+
+/// An alias for a hashmap containing photon-serialized objects
+pub type PhotonHashmap = IndexMap<PhotonDataType, PhotonDataType>;
+
+/// An alias for the parameter hashmap used in photon messages.
+pub type ParameterMap = IndexMap<u8, PhotonDataType>;
 
 /// An error that can occur when parsing a message
 #[derive(Debug, Error)]
