@@ -182,8 +182,6 @@ pub const WEB_RPC_RETURN_CODE: u8 = 207;
 /// (206) Message returned by WebRPC server. Analog to Photon's debug message. Type: string.
 pub const WEB_RPC_RETURN_MESSAGE: u8 = 206;
 
-// NOTE: everything under here is NOT present in the version of Photon that BulletForce uses.
-
 /// (205) Used to define a "slice" for cached events. Slices can easily be removed from cache. Type: int.
 pub const CACHE_SLICE_INDEX: u8 = 205;
 

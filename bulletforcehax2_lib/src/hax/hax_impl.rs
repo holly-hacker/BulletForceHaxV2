@@ -235,7 +235,7 @@ impl HaxState {
                 }
                 pun_event_code::RPC => {
                     let mut event = RpcEvent::from_map(&mut event.parameters);
-                    if let Some(data) = event.extract_rpc_data() {
+                    if let Some(data) = event.extract_rpc_call() {
                         let sender = data.get_owner_id();
                         let method_name = get_rpc_method_name(&data).unwrap_or_else(|_| "?".into());
                         let parameters = match &data.in_method_parameters {

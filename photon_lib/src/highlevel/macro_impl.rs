@@ -1,3 +1,6 @@
+// TODO: add support to the macro for required fields
+// TODO: allow opting out of custom_properties
+
 macro_rules! impl_u8_map_conversion {
     (
         $(

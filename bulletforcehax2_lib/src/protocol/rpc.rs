@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 
-use photon_lib::highlevel::structs::RpcEventData;
+use photon_lib::highlevel::structs::RpcCall;
 
 pub const METHOD_NAMES: [&str; 80] = [
     "AcknowledgeDamageDoneRPC",
@@ -91,7 +91,7 @@ pub const METHOD_NAMES: [&str; 80] = [
 ///
 /// This function gets the string method name if it is present, or otherwise resolves the method index using the
 /// hardcoded [METHOD_NAMES] list.
-pub fn get_rpc_method_name(data: &RpcEventData) -> anyhow::Result<Cow<str>> {
+pub fn get_rpc_method_name(data: &RpcCall) -> anyhow::Result<Cow<str>> {
     if let Some(idx) = data.rpc_index {
         Ok(Cow::Borrowed(METHOD_NAMES[idx as usize]))
     } else if let Some(method_name) = &data.method_name {

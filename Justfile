@@ -15,6 +15,6 @@ clear-coverage:
     find . -name "*.profraw" -type f -delete
 
 check:
-    cargo clippy
-    cargo doc
-    cargo nextest run
+    cargo clippy --all-features
+    cargo doc --all-features
+    cargo nextest run --all-features --status-level fail

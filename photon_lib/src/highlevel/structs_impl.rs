@@ -3,12 +3,12 @@ use super::PhotonMapConversion;
 
 impl RpcEvent {
     /// Drains the [Self::data] field
-    pub fn extract_rpc_data(&mut self) -> Option<RpcEventData> {
-        self.data.as_mut().map(RpcEventData::from_map)
+    pub fn extract_rpc_call(&mut self) -> Option<RpcCall> {
+        self.data.as_mut().map(RpcCall::from_map)
     }
 }
 
-impl RpcEventData {
+impl RpcCall {
     const PHOTON_NETWORK_MAX_VIEW_IDS: i32 = 1000;
 
     pub fn get_owner_id(&self) -> Option<i32> {

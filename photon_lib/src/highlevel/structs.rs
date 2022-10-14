@@ -1,14 +1,20 @@
+//! High-level representations of photon messages.
+
 pub use super::structs_impl::*;
 use crate::highlevel::constants::{actor_properties, game_property_key, parameter_code};
+#[allow(unused)]
+use crate::highlevel::constants::{event_code, operation_code, pun_event_code};
 use crate::photon_data_type::PhotonDataType;
 use crate::PhotonHashmap;
 
 impl_u8_map_conversion! {
+    /// Parameter of [event_code::GAME_LIST] and [event_code::GAME_LIST_UPDATE]. Contains a list of [RoomInfo].
     RoomInfoList {
         [parameter_code::GAME_LIST => PhotonDataType::Hashtable]
         games: PhotonHashmap,
     }
 
+    /// Request parameter of [operation_code::JOIN_GAME].
     #[derive(Debug)]
     JoinGame {
         [parameter_code::ROOM_NAME => PhotonDataType::String]
@@ -23,7 +29,7 @@ impl_u8_map_conversion! {
         [parameter_code::PLAYER_PROPERTIES => PhotonDataType::Hashtable]
         player_properties: PhotonHashmap,
 
-        /// A serialized instance of [crate::highlevel::structs::RoomInfo]
+        /// A serialized instance of [RoomInfo]
         [parameter_code::GAME_PROPERTIES => PhotonDataType::Hashtable]
         game_properties: PhotonHashmap,
 
@@ -64,6 +70,7 @@ impl_u8_map_conversion! {
         room_option_flags: i32, // could add an impl to map this to an enum or something
     }
 
+    /// Response parameter of [operation_code::JOIN_GAME].
     #[derive(Debug)]
     JoinGameResponse {
         [parameter_code::ROOM_NAME => PhotonDataType::String]
@@ -75,11 +82,11 @@ impl_u8_map_conversion! {
         [parameter_code::ACTOR_LIST => PhotonDataType::IntArray]
         actor_list: Vec<i32>,
 
-        /// A hashmap over serialized [Player]s
+        /// A hashmap over serialized [Player]s. The keys in this hashmap are integer actor ids.
         [parameter_code::PLAYER_PROPERTIES => PhotonDataType::Hashtable]
         player_properties: PhotonHashmap,
 
-        /// A serialized instance of [crate::highlevel::structs::RoomInfo]
+        /// A serialized instance of [RoomInfo]
         [parameter_code::GAME_PROPERTIES => PhotonDataType::Hashtable]
         game_properties: PhotonHashmap,
 
@@ -90,6 +97,7 @@ impl_u8_map_conversion! {
         room_option_flags: i32, // could add an impl to map this to an enum or something
     }
 
+    /// Parameter for [pun_event_code::RPC]. Contains a single [RpcCall].
     #[derive(Debug)]
     RpcEvent {
         [parameter_code::ACTOR_NR => PhotonDataType::Integer]
@@ -102,17 +110,22 @@ impl_u8_map_conversion! {
 
 // NOTE: this macro adds a `custom_properties` field for remaining, string-keyed properties
 impl_photon_map_conversion! {
+    /// Describes a room.
     #[derive(Debug, Clone, PartialEq, Eq)]
     RoomInfo {
+        /// If `true`, this game should be removed from the game list in the lobby. Not used during gameplay.
         [PhotonDataType::Byte(game_property_key::REMOVED) => PhotonDataType::Boolean]
         removed: bool,
 
+        /// Indicates how many players can be in this room. 0 means no limit.
         [PhotonDataType::Byte(game_property_key::MAX_PLAYERS) => PhotonDataType::Byte]
         max_players: u8,
 
+        /// Indicates if the room can be joined.
         [PhotonDataType::Byte(game_property_key::IS_OPEN) => PhotonDataType::Boolean]
         is_open: bool,
 
+        /// Indicates if this room should be shown in the lobby. Invisible rooms can still be joined.
         [PhotonDataType::Byte(game_property_key::IS_VISIBLE) => PhotonDataType::Boolean]
         is_visible: bool,
 
@@ -122,26 +135,37 @@ impl_photon_map_conversion! {
         [PhotonDataType::Byte(game_property_key::CLEANUP_CACHE_ON_LEAVE) => PhotonDataType::Boolean]
         cleanup_cache_on_leave: bool,
 
+        /// The actor id of the master client.
         [PhotonDataType::Byte(game_property_key::MASTER_CLIENT_ID) => PhotonDataType::Integer]
         master_client_id: i32,
 
         [PhotonDataType::Byte(game_property_key::PROPS_LISTED_IN_LOBBY) => PhotonDataType::StringArray]
         props_listed_in_lobby: Vec<String>,
 
+        /// Instructs the server to keep player slots open for these players.
         [PhotonDataType::Byte(game_property_key::EXPECTED_USERS) => PhotonDataType::StringArray]
         expected_users: Vec<String>,
 
+        /// How long the room stays alive after the last player left.
+        ///
+        /// See also [RoomInfo::player_ttl].
         [PhotonDataType::Byte(game_property_key::EMPTY_ROOM_TTL) => PhotonDataType::Integer]
         empty_room_ttl: i32,
 
+        /// How long a player stays "active" after disconnecting. As long as this time has not passed, their slot stays occupied.
+        ///
+        /// See also [Player::is_inactive].
         [PhotonDataType::Byte(game_property_key::PLAYER_TTL) => PhotonDataType::Integer]
         player_ttl: i32,
     }
 
+    /// Describes a player. Most information wil be in [Player::custom_properties].
     Player {
+        // The player's nickname.
         [PhotonDataType::Byte(actor_properties::PLAYER_NAME) => PhotonDataType::String]
         nickname: String,
 
+        /// Not always present.
         [PhotonDataType::Byte(actor_properties::USER_ID) => PhotonDataType::String]
         user_id: String,
 
@@ -149,8 +173,8 @@ impl_photon_map_conversion! {
         is_inactive: bool,
     }
 
-    RpcEventData {
-        // TODO: add support to the macro for required fields
+    /// An RPC call. Can be both sent and received by the client.
+    RpcCall {
         /// Required
         [PhotonDataType::Byte(0) => PhotonDataType::Integer]
         net_view_id: i32,
@@ -158,14 +182,14 @@ impl_photon_map_conversion! {
         [PhotonDataType::Byte(1) => PhotonDataType::Short]
         other_side_prefix: i16,
 
-        /// Mutually exclusive with [Self::rpc_index]
+        /// Mutually exclusive with [RpcCall::rpc_index]
         [PhotonDataType::Byte(3) => PhotonDataType::String]
         method_name: String,
 
         [PhotonDataType::Byte(4) => PhotonDataType::ObjectArray]
         in_method_parameters: Vec<PhotonDataType>,
 
-        /// Mutually exclusive with [Self::method_name]
+        /// Mutually exclusive with [RpcCall::method_name]
         [PhotonDataType::Byte(5) => PhotonDataType::Byte]
         rpc_index: u8,
     }
