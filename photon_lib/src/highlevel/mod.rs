@@ -4,8 +4,8 @@
 mod macro_impl;
 
 pub mod constants;
-pub mod gameplay;
-pub mod lobby;
+pub mod structs;
+mod structs_impl;
 
 use crate::{ParameterMap, PhotonHashmap};
 

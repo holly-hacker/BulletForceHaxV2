@@ -3,7 +3,7 @@
 //! Note that the documentation and deprecation attributes come from Photon with only minor edits.
 
 #[allow(unused)]
-use crate::highlevel::{constants::*, gameplay::Player};
+use crate::highlevel::{constants::*, structs::Player};
 
 /// (255) Name of a player/actor.
 pub const PLAYER_NAME: u8 = 255; // was: 1

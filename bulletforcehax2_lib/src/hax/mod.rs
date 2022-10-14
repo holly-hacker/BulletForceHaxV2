@@ -6,7 +6,7 @@ mod impl_websocket;
 
 use std::sync::Arc;
 
-use photon_lib::{highlevel::gameplay::Player, indexmap::IndexMap};
+use photon_lib::{highlevel::structs::Player, indexmap::IndexMap};
 
 use crate::proxy::websocket_proxy::WebSocketProxy;
 

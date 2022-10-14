@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 
-use photon_lib::highlevel::gameplay::RpcEventData;
+use photon_lib::highlevel::structs::RpcEventData;
 
 pub const METHOD_NAMES: [&str; 80] = [
     "AcknowledgeDamageDoneRPC",

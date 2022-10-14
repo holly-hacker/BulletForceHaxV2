@@ -4,7 +4,7 @@
 
 #[allow(unused)]
 use crate::{
-    highlevel::{constants::*, lobby::RoomInfo},
+    highlevel::{constants::*, structs::RoomInfo},
     photon_message::EventData,
 };
 

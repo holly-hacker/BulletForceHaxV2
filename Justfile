@@ -13,3 +13,8 @@ cover-photon $RUSTFLAGS='-Cinstrument-coverage' $CARGO_INCREMENTAL='0' $LLVM_PRO
 
 clear-coverage:
     find . -name "*.profraw" -type f -delete
+
+check:
+    cargo clippy
+    cargo doc
+    cargo nextest run

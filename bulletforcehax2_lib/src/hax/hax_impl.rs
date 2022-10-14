@@ -4,8 +4,7 @@ use futures_util::lock::Mutex;
 use photon_lib::{
     highlevel::{
         constants::{event_code, operation_code, parameter_code, pun_event_code},
-        gameplay::{JoinGame, JoinGameResponse, Player, RpcEvent},
-        lobby::{RoomInfo, RoomInfoList},
+        structs::{JoinGame, JoinGameResponse, Player, RoomInfo, RoomInfoList, RpcEvent},
         PhotonMapConversion, PhotonParameterMapConversion,
     },
     photon_data_type::PhotonDataType,
