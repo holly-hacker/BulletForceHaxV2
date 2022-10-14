@@ -243,7 +243,7 @@ mod tests {
         }
 
         {
-            let serialized = RoomInfo::from_map(&mut photon_map.clone());
+            let serialized = RoomInfo::from_map(&mut photon_map.clone()).unwrap();
             assert_eq!(serialized, room_info);
         }
     }

@@ -35,8 +35,8 @@ macro_rules! impl_u8_map_conversion {
             }
 
             impl crate::highlevel::PhotonParameterMapConversion for $type_name {
-                fn from_map(properties: &mut crate::ParameterMap) -> Self {
-                    $type_name {
+                fn from_map(properties: &mut crate::ParameterMap) -> Result<Self, crate::highlevel::FromMapError> {
+                    Ok($type_name {
                         // NOTE: we need to use `shift_remove` to retain order for custom_properties later
                         // this may not actually be important, but it allows types converted both ways and be identical
                         $(
@@ -46,10 +46,11 @@ macro_rules! impl_u8_map_conversion {
                                     Some($($map_type_req)?(b)) => b,
                                     #[allow(unreachable_patterns)]
                                     Some(k) => {
-                                        tracing::warn!(
+                                        let error_message = format!(
                                             "When converting {} from map, found {k:?} when expecting data type {}",
                                             stringify!($type_name), stringify!($($map_type_req)?));
-                                        todo!("error handling in from_map for wrong type in req field");
+                                        tracing::error!("{}", error_message);
+                                        return Err(crate::highlevel::FromMapError(error_message));
                                     }
                                     _ => todo!("error handling in from_map for missing req field"), // TODO: error handling here!!
                                 },
@@ -69,7 +70,7 @@ macro_rules! impl_u8_map_conversion {
                                 },
                             )?
                         )*
-                    }
+                    })
                 }
 
                 fn into_map(mut self, map: &mut crate::ParameterMap) {
@@ -122,8 +123,8 @@ macro_rules! impl_photon_map_conversion {
             }
 
             impl crate::highlevel::PhotonMapConversion for $type_name {
-                fn from_map(properties: &mut crate::PhotonHashmap) -> Self {
-                    $type_name {
+                fn from_map(properties: &mut crate::PhotonHashmap) -> Result<Self, crate::highlevel::FromMapError> {
+                    Ok($type_name {
                         $(
                             // NOTE: we need to use `shift_remove` to retain order for custom_properties later
                             // this may not actually be important, but it allows types converted both ways and be identical
@@ -133,10 +134,11 @@ macro_rules! impl_photon_map_conversion {
                                     Some($($map_type_req)?(b)) => b,
                                     #[allow(unreachable_patterns)]
                                     Some(k) => {
-                                        tracing::warn!(
+                                        let error_message = format!(
                                             "When converting {} from map, found {k:?} when expecting data type {}",
                                             stringify!($type_name), stringify!($($map_type_req)?));
-                                        todo!("error handling in from_map for wrong type in req field");
+                                        tracing::error!("{}", error_message);
+                                        return Err(crate::highlevel::FromMapError(error_message));
                                     }
                                     _ => todo!("error handling in from_map for missing req field"), // TODO: error handling here!!
                                 },
@@ -169,7 +171,7 @@ macro_rules! impl_photon_map_conversion {
                                 }
                             })
                             .collect::<indexmap::IndexMap<String, PhotonDataType>>(),
-                    }
+                    })
                 }
 
                 fn into_map(mut self, map: &mut crate::PhotonHashmap) {

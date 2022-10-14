@@ -1,10 +1,9 @@
-use super::structs::*;
-use super::PhotonMapConversion;
+use super::{structs::*, FromMapError, PhotonMapConversion};
 
 impl RpcEvent {
     /// Drains the [Self::data] field
-    pub fn extract_rpc_call(&mut self) -> Option<RpcCall> {
-        self.data.as_mut().map(RpcCall::from_map)
+    pub fn extract_rpc_call(&mut self) -> Result<Option<RpcCall>, FromMapError> {
+        self.data.as_mut().map(RpcCall::from_map).transpose()
     }
 }
 

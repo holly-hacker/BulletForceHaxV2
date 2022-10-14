@@ -74,8 +74,8 @@ impl HaxState {
         }
 
         match server {
-            WebSocketServer::LobbyServer => Self::match_packet_lobby(hax, &mut photon_message),
-            WebSocketServer::GameServer => Self::match_packet_game(hax, &mut photon_message),
+            WebSocketServer::LobbyServer => Self::match_packet_lobby(hax, &mut photon_message)?,
+            WebSocketServer::GameServer => Self::match_packet_game(hax, &mut photon_message)?,
         }
 
         let mut buf: Vec<u8> = vec![];
@@ -85,7 +85,10 @@ impl HaxState {
         Ok(())
     }
 
-    fn match_packet_lobby(hax: Arc<Mutex<Self>>, photon_message: &mut PhotonMessage) {
+    fn match_packet_lobby(
+        hax: Arc<Mutex<Self>>,
+        photon_message: &mut PhotonMessage,
+    ) -> anyhow::Result<()> {
         match photon_message {
             PhotonMessage::OperationRequest(operation_request) => {
                 match operation_request.operation_code {
@@ -119,7 +122,7 @@ impl HaxState {
                             hax.game_version.clone(),
                         )
                     };
-                    let mut game_list = RoomInfoList::from_map(&mut event.parameters);
+                    let mut game_list = RoomInfoList::from_map(&mut event.parameters)?;
                     if let Some(games) = &mut game_list.games {
                         for (k, v) in games.iter_mut() {
                             if let (
@@ -127,7 +130,7 @@ impl HaxState {
                                 PhotonDataType::Hashtable(props),
                             ) = (k, v)
                             {
-                                let mut room_info = RoomInfo::from_map(props);
+                                let mut room_info = RoomInfo::from_map(props)?;
 
                                 // NOTE: BulletForce has `gameVersion` as key so this wont match
                                 if let Some(PhotonDataType::String(version)) =
@@ -170,17 +173,25 @@ impl HaxState {
             },
             _ => (),
         }
+
+        Ok(())
     }
 
-    fn match_packet_game(hax: Arc<Mutex<Self>>, photon_message: &mut PhotonMessage) {
+    fn match_packet_game(
+        hax: Arc<Mutex<Self>>,
+        photon_message: &mut PhotonMessage,
+    ) -> anyhow::Result<()> {
         match photon_message {
             PhotonMessage::OperationRequest(operation_request) => {
                 match operation_request.operation_code {
                     operation_code::JOIN_GAME => {
                         let props = &mut operation_request.parameters;
-                        let req = JoinGame::from_map(props);
+                        let req = JoinGame::from_map(props)?;
                         debug!(request = format!("req:?"), "Game Join Request");
                         req.into_map(props);
+                    }
+                    operation_code::RAISE_EVENT => {
+                        // todo
                     }
                     _ => (),
                 }
@@ -189,7 +200,7 @@ impl HaxState {
                 match operation_response.operation_code {
                     operation_code::JOIN_GAME if operation_response.return_code == 0 => {
                         let props = &mut operation_response.parameters;
-                        let mut resp = JoinGameResponse::from_map(props);
+                        let mut resp = JoinGameResponse::from_map(props)?;
                         debug!(response = format!("resp:?"), "Game Join Response");
                         if let Some(player_props) = &mut resp.player_properties {
                             let mut hax = futures::executor::block_on(hax.lock());
@@ -205,7 +216,7 @@ impl HaxState {
                                     PhotonDataType::Hashtable(actor_props) => actor_props,
                                     _ => continue,
                                 };
-                                let actor_info = Player::from_map(&mut actor_props.clone());
+                                let actor_info = Player::from_map(&mut actor_props.clone())?;
 
                                 debug!(actor_id, "Found new actor");
                                 hax.players.insert(actor_id, actor_info);
@@ -223,7 +234,7 @@ impl HaxState {
                     let props = event.parameters.get_mut(&parameter_code::PLAYER_PROPERTIES);
 
                     if let Some(PhotonDataType::Hashtable(props)) = props {
-                        let player = Player::from_map(props);
+                        let player = Player::from_map(props)?;
 
                         info!(
                             "Received player info for {:?} (id {:?})",
@@ -234,8 +245,8 @@ impl HaxState {
                     }
                 }
                 pun_event_code::RPC => {
-                    let mut event = RpcEvent::from_map(&mut event.parameters);
-                    if let Some(data) = event.extract_rpc_call() {
+                    let mut event = RpcEvent::from_map(&mut event.parameters)?;
+                    if let Some(data) = event.extract_rpc_call()? {
                         let sender = data.get_owner_id();
                         let method_name = get_rpc_method_name(&data).unwrap_or_else(|_| "?".into());
                         let parameters = match &data.in_method_parameters {
@@ -257,6 +268,8 @@ impl HaxState {
             // unhandled
             _ => (),
         }
+
+        Ok(())
     }
 }
 
