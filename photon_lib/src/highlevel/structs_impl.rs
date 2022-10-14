@@ -11,8 +11,7 @@ impl RpcEvent {
 impl RpcCall {
     const PHOTON_NETWORK_MAX_VIEW_IDS: i32 = 1000;
 
-    pub fn get_owner_id(&self) -> Option<i32> {
-        self.net_view_id
-            .map(|i| i / Self::PHOTON_NETWORK_MAX_VIEW_IDS)
+    pub fn get_owner_id(&self) -> i32 {
+        self.net_view_id / Self::PHOTON_NETWORK_MAX_VIEW_IDS
     }
 }
