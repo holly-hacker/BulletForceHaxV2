@@ -4,32 +4,28 @@ Photon is a networking framework for Unity used by BulletForce.
 
 ## Photon Libraries
 
-You can get a copy of these files by downloading them from the Unity Asset Store, which requires installing Unity and creating a project.
+You can get a copy of these files by downloading them from the Unity Asset Store or by finding them hosted on GitHub by third parties. See [Development.md](./Development.md) for more info.
 
-When downloading photon from the Unity Asset Store, it comes in a few components.
-
-### PhotonLibs/Photon3Unity3D.dll
+### Plugins/Photon3Unity3D.dll
 
 A .NET DLL that is referenced by the game. It handles all low level networking. This means reading and writing bytes to a network stream and and converting it to one of the basic types such as OperationRequest, OperationResponse, EventData, etc. It is not obfuscated so it can be analyzed with dnSpy.
+
+This DLL is versioned differently to the rest of PUN.
 
 Notable methods:
 - `PeerBase.DeserializeMessageAndCallback(StreamBuffer)`: reads from a stream and deserialize
 
-### PhotonLibs/WebSocket
+### Plugins/WebSocket
 
 A small amount of plumbing code in the form of .cs files so the WebGL version of Unity can connect over WebSocket or WebTcp.
 
-### PhotonRealtime
+### Photon Unity Networking/Plugins/PhotonNetwork
 
 A library in the form of .cs files that implements a layer on top of Photon3Unity3D.dll. It provides a more high level interface for operations such as connecting to a lobby and keeping a list of actors ingame.
 
 Of note is LoadbalancingPeer.cs, which implements `PhotonPeer` and contains a bunch of useful constants, and LoadBalancingClient.cs, which implements `IPhotonPeerListener` and maps Operation{Request,Response} and EventData to more high-level objects.
 
-### PhotonUnityNetworking
-
-TODO
-
-### PhotonChat
+### PhotonChatApi
 
 TODO
 
