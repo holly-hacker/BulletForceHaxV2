@@ -2,8 +2,6 @@
 # You can get these commands using `source commands.nu`
 
 # Looks through the latest debug log to find a specifix Photon message.
-# 
-# This is a test
 def bfh_find_packet [
         type: string, # The type of the message, eg. "EventData" or "OperationReques".
         code: int     # The event/operation code of this event, eg. 229.
