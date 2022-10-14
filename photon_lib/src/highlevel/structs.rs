@@ -175,8 +175,8 @@ impl_photon_map_conversion! {
 
     /// An RPC call. Can be both sent and received by the client.
     RpcCall {
-        [PhotonDataType::Byte(0) => PhotonDataType::Integer]
-        @net_view_id: i32,
+        [@ PhotonDataType::Byte(0) => PhotonDataType::Integer]
+        net_view_id: i32,
 
         [PhotonDataType::Byte(1) => PhotonDataType::Short]
         other_side_prefix: i16,
