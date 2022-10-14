@@ -215,8 +215,12 @@ fn start_proxy_task(
                             server,
                             direction,
                         );
-                        if let Err(e) = result {
-                            error!("Error during websocket hook handler: {}", e);
+                        match result {
+                            Ok(true) => (),        // message should be forwarded
+                            Ok(false) => continue, // message should not be sent
+                            Err(e) => {
+                                error!("Error during websocket hook handler: {}", e);
+                            }
                         }
                     }
                 }

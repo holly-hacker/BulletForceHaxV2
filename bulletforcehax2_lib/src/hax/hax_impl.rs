@@ -18,6 +18,16 @@ use crate::{
     proxy::{Direction, WebSocketServer},
 };
 
+#[allow(dead_code)]
+enum WebSocketHookAction {
+    /// Replace the original message with the given one
+    Change(PhotonMessage),
+    /// Drop this message completely, don't forward it to the client/server
+    Drop,
+    /// Do nothing, just pass along the original message
+    DoNothing,
+}
+
 impl HaxState {
     #[allow(clippy::ptr_arg)]
     pub fn webrequest_hook_onrequest(
@@ -37,13 +47,14 @@ impl HaxState {
         Ok(())
     }
 
+    /// Runs logic on this websocket message and returns whether the given data should be forwarded on.
     pub fn websocket_hook(
         hax: Arc<Mutex<Self>>,
         data: &mut Vec<u8>,
         server: WebSocketServer,
         direction: Direction,
-    ) -> anyhow::Result<()> {
-        let mut photon_message = PhotonMessage::from_websocket_bytes(&mut data.as_slice())?;
+    ) -> anyhow::Result<bool> {
+        let photon_message = PhotonMessage::from_websocket_bytes(&mut data.as_slice())?;
 
         let debug_info = match &photon_message {
             PhotonMessage::OperationRequest(r) => Some(("OperationRequest", r.operation_code)),
@@ -73,22 +84,28 @@ impl HaxState {
             );
         }
 
-        match server {
-            WebSocketServer::LobbyServer => Self::match_packet_lobby(hax, &mut photon_message)?,
-            WebSocketServer::GameServer => Self::match_packet_game(hax, &mut photon_message)?,
+        let action = match server {
+            WebSocketServer::LobbyServer => Self::match_packet_lobby(hax, photon_message)?,
+            WebSocketServer::GameServer => Self::match_packet_game(hax, photon_message)?,
+        };
+
+        match action {
+            WebSocketHookAction::Change(new_message) => {
+                let mut buf: Vec<u8> = vec![];
+                new_message.to_websocket_bytes(&mut buf)?;
+                *data = buf;
+            }
+            WebSocketHookAction::Drop => return Ok(false),
+            WebSocketHookAction::DoNothing => (),
         }
 
-        let mut buf: Vec<u8> = vec![];
-        photon_message.to_websocket_bytes(&mut buf)?;
-        *data = buf;
-
-        Ok(())
+        Ok(true)
     }
 
     fn match_packet_lobby(
         hax: Arc<Mutex<Self>>,
-        photon_message: &mut PhotonMessage,
-    ) -> anyhow::Result<()> {
+        photon_message: PhotonMessage,
+    ) -> anyhow::Result<WebSocketHookAction> {
         match photon_message {
             PhotonMessage::OperationRequest(operation_request) => {
                 match operation_request.operation_code {
@@ -111,7 +128,7 @@ impl HaxState {
                     _ => (),
                 }
             }
-            PhotonMessage::EventData(event) => match event.code {
+            PhotonMessage::EventData(mut event) => match event.code {
                 event_code::GAME_LIST | event_code::GAME_LIST_UPDATE => {
                     let (strip_passwords, show_mobile, show_all_versions, game_version) = {
                         let hax = futures::executor::block_on(hax.lock());
@@ -123,6 +140,7 @@ impl HaxState {
                         )
                     };
                     let mut game_list = RoomInfoList::from_map(&mut event.parameters)?;
+                    let mut changes_made = false;
                     if let Some(games) = &mut game_list.games {
                         for (k, v) in games.iter_mut() {
                             if let (
@@ -145,6 +163,7 @@ impl HaxState {
 
                                 if show_mobile {
                                     force_games_web(&mut room_info);
+                                    changes_made = true;
                                 }
                                 if show_all_versions {
                                     if let Some(version) = &game_version {
@@ -154,12 +173,14 @@ impl HaxState {
                                             None => version.as_str(),
                                         };
                                         force_games_current_ver(&mut room_info, version);
+                                        changes_made = true;
                                     } else {
                                         warn!("Tried to adjust game version of lobby games but it was not known");
                                     }
                                 }
                                 if strip_passwords {
                                     strip_password(&mut room_info);
+                                    changes_made = true;
                                 }
 
                                 room_info.into_map(props);
@@ -167,28 +188,31 @@ impl HaxState {
                         }
                     }
 
-                    game_list.into_map(&mut event.parameters);
+                    // prevent doing work if we didnt actually change anything
+                    if changes_made {
+                        game_list.into_map(&mut event.parameters);
+                        return Ok(WebSocketHookAction::Change(PhotonMessage::EventData(event)));
+                    }
                 }
                 _ => (),
             },
             _ => (),
         }
 
-        Ok(())
+        Ok(WebSocketHookAction::DoNothing)
     }
 
     fn match_packet_game(
         hax: Arc<Mutex<Self>>,
-        photon_message: &mut PhotonMessage,
-    ) -> anyhow::Result<()> {
+        photon_message: PhotonMessage,
+    ) -> anyhow::Result<WebSocketHookAction> {
         match photon_message {
-            PhotonMessage::OperationRequest(operation_request) => {
+            PhotonMessage::OperationRequest(mut operation_request) => {
                 match operation_request.operation_code {
                     operation_code::JOIN_GAME => {
                         let props = &mut operation_request.parameters;
-                        let req = JoinGame::from_map(props)?;
-                        debug!(request = format!("req:?"), "Game Join Request");
-                        req.into_map(props);
+                        let _req = JoinGame::from_map(props)?;
+                        debug!(request = format!("_req:?"), "Game Join Request");
                     }
                     operation_code::RAISE_EVENT => {
                         // todo
@@ -196,7 +220,7 @@ impl HaxState {
                     _ => (),
                 }
             }
-            PhotonMessage::OperationResponse(operation_response) => {
+            PhotonMessage::OperationResponse(mut operation_response) => {
                 match operation_response.operation_code {
                     operation_code::JOIN_GAME if operation_response.return_code == 0 => {
                         let props = &mut operation_response.parameters;
@@ -222,14 +246,11 @@ impl HaxState {
                                 hax.players.insert(actor_id, actor_info);
                             }
                         }
-
-                        // todo
-                        resp.into_map(props);
                     }
                     _ => (),
                 }
             }
-            PhotonMessage::EventData(event) => match event.code {
+            PhotonMessage::EventData(mut event) => match event.code {
                 event_code::JOIN => {
                     let props = event.parameters.get_mut(&parameter_code::PLAYER_PROPERTIES);
 
@@ -240,8 +261,6 @@ impl HaxState {
                             "Received player info for {:?} (id {:?})",
                             player.nickname, player.user_id
                         );
-
-                        player.into_map(props);
                     }
                 }
                 pun_event_code::RPC => {
@@ -269,7 +288,7 @@ impl HaxState {
             _ => (),
         }
 
-        Ok(())
+        Ok(WebSocketHookAction::DoNothing)
     }
 }
 
