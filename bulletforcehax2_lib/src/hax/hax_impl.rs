@@ -37,7 +37,6 @@ impl HaxState {
         Ok(())
     }
 
-    #[allow(clippy::ptr_arg)]
     pub fn websocket_hook(
         hax: Arc<Mutex<Self>>,
         data: &mut Vec<u8>,
@@ -89,7 +88,6 @@ impl HaxState {
     fn match_packet_lobby(hax: Arc<Mutex<Self>>, photon_message: &mut PhotonMessage) {
         match photon_message {
             PhotonMessage::OperationRequest(operation_request) => {
-                #[allow(clippy::single_match)]
                 match operation_request.operation_code {
                     operation_code::AUTHENTICATE => {
                         let mut hax = futures::executor::block_on(hax.lock());

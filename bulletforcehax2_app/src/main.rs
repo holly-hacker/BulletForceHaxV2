@@ -222,7 +222,8 @@ fn init_logging() -> tracing_appender::non_blocking::WorkerGuard {
     // file logs
     let (file_layer, guard) = {
         use time::OffsetDateTime;
-        let current_time = OffsetDateTime::now_local().unwrap_or(OffsetDateTime::now_utc());
+        let current_time =
+            OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc());
 
         let file_name = format!(
             "log_{:04}{:02}{:02}_{:02}{:02}{:02}.json",
@@ -242,7 +243,7 @@ fn init_logging() -> tracing_appender::non_blocking::WorkerGuard {
         let layer = tracing_subscriber::fmt::layer()
             .with_writer(non_blocking_appender)
             .json()
-            .with_filter(filter.clone())
+            .with_filter(filter)
             .with_filter(LevelFilter::from_level(logging_level_file));
 
         (layer, guard)
