@@ -3,8 +3,8 @@ use std::sync::Arc;
 use futures_util::lock::Mutex;
 use photon_lib::{
     highlevel::{
-        constants::{event_code, operation_code, parameter_code},
-        gameplay::{JoinGame, JoinGameResponse, Player},
+        constants::{event_code, operation_code, parameter_code, pun_event_code},
+        gameplay::{JoinGame, JoinGameResponse, Player, RpcEvent},
         lobby::{RoomInfo, RoomInfoList},
         PhotonMapConversion, PhotonParameterMapConversion,
     },
@@ -15,6 +15,7 @@ use tracing::{debug, info, trace, warn};
 
 use crate::{
     hax::HaxState,
+    protocol::rpc::get_rpc_method_name,
     proxy::{Direction, WebSocketServer},
 };
 
@@ -231,6 +232,25 @@ impl HaxState {
                         );
 
                         player.into_map(props);
+                    }
+                }
+                pun_event_code::RPC => {
+                    let mut event = RpcEvent::from_map(&mut event.parameters);
+                    if let Some(data) = event.extract_rpc_data() {
+                        let sender = data.get_owner_id();
+                        let method_name = get_rpc_method_name(&data).unwrap_or_else(|_| "?".into());
+                        let parameters = match &data.in_method_parameters {
+                            Some(p) => p
+                                .iter()
+                                .map(|data| format!("{data:?}"))
+                                .collect::<Vec<_>>()
+                                .join(","),
+                            None => String::new(),
+                        };
+                        debug!(
+                            method_name = method_name.to_string(),
+                            sender, parameters, "Incoming RPC call"
+                        );
                     }
                 }
                 _ => (),

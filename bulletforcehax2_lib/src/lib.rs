@@ -2,6 +2,7 @@
 #![allow(clippy::single_match)]
 
 pub mod hax;
+pub mod protocol;
 pub(crate) mod proxy;
 pub mod version_scraper;
 

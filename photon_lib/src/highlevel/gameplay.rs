@@ -1,3 +1,4 @@
+use super::PhotonMapConversion;
 use crate::highlevel::constants::{actor_properties, parameter_code};
 use crate::photon_data_type::PhotonDataType;
 use crate::PhotonHashmap;
@@ -83,6 +84,22 @@ impl_u8_map_conversion! {
         [parameter_code::ROOM_OPTION_FLAGS => PhotonDataType::Integer]
         room_option_flags: i32, // could add an impl to map this to an enum or something
     }
+
+    #[derive(Debug)]
+    RpcEvent {
+        [parameter_code::ACTOR_NR => PhotonDataType::Integer]
+        sender_actor: i32,
+
+        [parameter_code::CUSTOM_EVENT_CONTENT => PhotonDataType::Hashtable]
+        data: PhotonHashmap,
+    }
+}
+
+impl RpcEvent {
+    /// Drains the [Self::data] field
+    pub fn extract_rpc_data(&mut self) -> Option<RpcEventData> {
+        self.data.as_mut().map(RpcEventData::from_map)
+    }
 }
 
 // NOTE: this macro adds a `custom_properties` field for remaining, string-keyed properties
@@ -96,5 +113,35 @@ impl_photon_map_conversion! {
 
         [PhotonDataType::Byte(actor_properties::IS_INACTIVE) => PhotonDataType::Boolean]
         is_inactive: bool,
+    }
+
+    RpcEventData {
+        // TODO: add support to the macro for required fields
+        /// Required
+        [PhotonDataType::Byte(0) => PhotonDataType::Integer]
+        net_view_id: i32,
+
+        [PhotonDataType::Byte(1) => PhotonDataType::Short]
+        other_side_prefix: i16,
+
+        /// Mutually exclusive with [Self::rpc_index]
+        [PhotonDataType::Byte(3) => PhotonDataType::String]
+        method_name: String,
+
+        [PhotonDataType::Byte(4) => PhotonDataType::ObjectArray]
+        in_method_parameters: Vec<PhotonDataType>,
+
+        /// Mutually exclusive with [Self::method_name]
+        [PhotonDataType::Byte(5) => PhotonDataType::Byte]
+        rpc_index: u8,
+    }
+}
+
+impl RpcEventData {
+    const PHOTON_NETWORK_MAX_VIEW_IDS: i32 = 1000;
+
+    pub fn get_owner_id(&self) -> Option<i32> {
+        self.net_view_id
+            .map(|i| i / Self::PHOTON_NETWORK_MAX_VIEW_IDS)
     }
 }

@@ -1,0 +1,125 @@
+## PhotonServerSettings
+Can be extracted using AssetBundleExtractor. Requires passing il2cpp dummy dll files.
+
+The main use here is the RPC list.
+
+```json
+{
+    "0 MonoBehaviour Base": 
+    {
+        "0 PPtr<GameObject> m_GameObject": 
+        {
+            "0 int m_FileID": 0,
+            "0 SInt64 m_PathID": "0"
+        },
+        "1 UInt8 m_Enabled": 1,
+        "0 PPtr<MonoScript> m_Script": 
+        {
+            "0 int m_FileID": 1,
+            "0 SInt64 m_PathID": "1478"
+        },
+        "1 string m_Name": "PhotonServerSettings",
+        "1 string AppID": "8c2cad3e-2e3f-4941-9044-b390ff2c4956",
+        "1 string VoiceAppID": "",
+        "1 string ChatAppID": "",
+        "0 int HostType": 2,
+        "0 int PreferredRegion": 1,
+        "0 int EnabledRegions": -1,
+        "0 int Protocol": 0,
+        "1 string ServerAddress": "game-ca-1.blayzegames.com",
+        "0 int ServerPort": 5055,
+        "0 int VoiceServerPort": 5055,
+        "1 UInt8 JoinLobby": 1,
+        "1 UInt8 EnableLobbyStatistics": 0,
+        "0 int PunLogging": 0,
+        "0 int NetworkLogging": 1,
+        "1 UInt8 RunInBackground": 1,
+        "0 vector RpcList":  {
+            "0 Array Array": [
+                {"1 string data": "AcknowledgeDamageDoneRPC"},
+                {"1 string data": "AnotherRPCMethod"},
+                {"1 string data": "BecomeNewMasterClient"},
+                {"1 string data": "ChangeCrouchState"},
+                {"1 string data": "Chat"},
+                {"1 string data": "CmdGetTeamNumber"},
+                {"1 string data": "ColorRpc"},
+                {"1 string data": "DestroyRpc"},
+                {"1 string data": "DisplayVoteData"},
+                {"1 string data": "DoJump"},
+                {"1 string data": "FetchCheaters"},
+                {"1 string data": "FetchVoteData"},
+                {"1 string data": "FlagOwnerTeamUpdated"},
+                {"1 string data": "FlagTakenValueUpdated"},
+                {"1 string data": "Flash"},
+                {"1 string data": "GetBestSpawnPointForPlayer"},
+                {"1 string data": "GotKillAssist"},
+                {"1 string data": "HealthUpdated"},
+                {"1 string data": "InstantiateRpc"},
+                {"1 string data": "JSNow"},
+                {"1 string data": "KickPlayer"},
+                {"1 string data": "LatencyReceive"},
+                {"1 string data": "LatencySend"},
+                {"1 string data": "localCreateGrenade"},
+                {"1 string data": "localHurt"},
+                {"1 string data": "localReload"},
+                {"1 string data": "localSpawnThrowingWeapon"},
+                {"1 string data": "MapVotedFor"},
+                {"1 string data": "Marco"},
+                {"1 string data": "MatchOverChanged"},
+                {"1 string data": "mpMeleeAnimation"},
+                {"1 string data": "mpThrowGrenadeAnimation"},
+                {"1 string data": "MyRPCMethod"},
+                {"1 string data": "NukeKill"},
+                {"1 string data": "PickupItemInit"},
+                {"1 string data": "PlayerHitPlayer"},
+                {"1 string data": "PlayerKickedForPing"},
+                {"1 string data": "Polo"},
+                {"1 string data": "PunPickup"},
+                {"1 string data": "PunPickupSimple"},
+                {"1 string data": "PunRespawn"},
+                {"1 string data": "ReliabilityMessageReceived"},
+                {"1 string data": "ReliabilityMessageSent"},
+                {"1 string data": "RequestForPickupItems"},
+                {"1 string data": "RequestForPickupTimes"},
+                {"1 string data": "RequestVipsOnMasterFromSubordinate"},
+                {"1 string data": "RestartHardcoreModeRound"},
+                {"1 string data": "RestartMatch"},
+                {"1 string data": "RpcDie"},
+                {"1 string data": "RPCElevatorButtonPressed"},
+                {"1 string data": "RpcSendChatMessage"},
+                {"1 string data": "RpcShoot"},
+                {"1 string data": "RpcShowHitmarker"},
+                {"1 string data": "RpcShowPerkMessage"},
+                {"1 string data": "SetElevatorsClosed"},
+                {"1 string data": "SetMaps"},
+                {"1 string data": "SetNextMap"},
+                {"1 string data": "SetPing"},
+                {"1 string data": "SetRank"},
+                {"1 string data": "SetSpawnPoint"},
+                {"1 string data": "SetTimeScale"},
+                {"1 string data": "ShowAnnouncement"},
+                {"1 string data": "ShowDebugCapsule"},
+                {"1 string data": "SpawnFailed"},
+                {"1 string data": "TaggedPlayer"},
+                {"1 string data": "TeleportToPosition"},
+                {"1 string data": "UpdateAlivePlayers"},
+                {"1 string data": "UpdateHMFFARounds"},
+                {"1 string data": "UpdateMPDeaths"},
+                {"1 string data": "UpdateMPKills"},
+                {"1 string data": "UpdateMPRounds"},
+                {"1 string data": "UpdateTeamNumber"},
+                {"1 string data": "UpdateTeamPoints"},
+                {"1 string data": "UpdateTimeInMatch"},
+                {"1 string data": "UpdateVIPsOnSubordinates"},
+                {"1 string data": "UsernameChanged"},
+                {"1 string data": "WeaponCamoChanged"},
+                {"1 string data": "WeaponTypeChanged"},
+                {"1 string data": "RpcACKill"},
+                {"1 string data": "RpcForceKillstreak"}
+            ]
+        },
+        "1 UInt8 DisableAutoOpenWizard": 1
+    }
+}
+
+```
