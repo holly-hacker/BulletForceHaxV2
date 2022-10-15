@@ -7,6 +7,7 @@ mod version_manager;
 
 use std::path::Path;
 
+use anyhow::Context;
 use bulletforcehax2_lib::hax::BulletForceHax;
 use bulletforcehax2_ui::BulletForceHaxMenu;
 use once_cell::sync::OnceCell;
@@ -64,12 +65,14 @@ fn bulletforce_handler(request: &Request) -> Result<Response, wry::Error> {
     debug!("protocol req: {}", path);
 
     let version = GAME_VERSION.get().unwrap();
-    let path = match path {
+    let file_path = match path {
         "Build/$$game$$.json" => version.get_game_json(),
         "$$loader$$.js" => version.get_unity_loader(),
         _ => version.get_path(path),
     };
-    let content = std::fs::read(path).unwrap();
+    let content = std::fs::read(&file_path)
+        .with_context(|| format!("read file {:?} for req {:?}", file_path, path))
+        .unwrap();
 
     let builder = ResponseBuilder::new();
     builder
@@ -91,7 +94,7 @@ async fn real_main() -> anyhow::Result<()> {
     let _guard = init_logging();
 
     // version manager init
-    let version_manager = VersionManager::new(Path::new("bfhax_data")).unwrap();
+    let version_manager = VersionManager::new(Path::new("./bfhax_data/game_files")).unwrap();
 
     let version_info = match version_manager.version() {
         Some(x) => x,

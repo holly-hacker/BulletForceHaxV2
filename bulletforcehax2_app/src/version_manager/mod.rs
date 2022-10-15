@@ -9,8 +9,6 @@ use tracing::info;
 
 use self::downloader_dialog::DownloaderDialog;
 
-const CONFIG_FILE: &str = "version.json";
-
 pub struct VersionManager {
     path: PathBuf,
 }
@@ -26,9 +24,8 @@ impl VersionManager {
     }
 
     pub fn version(&self) -> Option<VersionConfig> {
-        let config_path = self.path.join(CONFIG_FILE);
-        match config_path.try_exists() {
-            Ok(true) => VersionConfig::read_from_path(&config_path).ok(),
+        match self.path.try_exists() {
+            Ok(true) => VersionConfig::read_from_directory(&self.path).ok(),
             _ => None,
         }
     }
@@ -61,7 +58,7 @@ impl VersionManager {
                 game_json: json.ok_or_else(|| anyhow!("did not find game json"))?,
             };
 
-            config.write_to_file(&self.path.join(CONFIG_FILE))?;
+            config.write_to_directory(&self.path)?;
 
             Ok(Some(config))
         } else {
@@ -73,12 +70,15 @@ impl VersionManager {
 /// The config file that gets written do disk inside the config directory
 #[derive(Default, Serialize, Deserialize)]
 pub struct VersionConfig {
+    #[serde(skip)]
     base_path: PathBuf,
     unity_loader: String,
     game_json: String,
 }
 
 impl VersionConfig {
+    const CONFIG_FILE: &'static str = "version.json";
+
     pub fn get_path(&self, path: &str) -> PathBuf {
         self.base_path.join(path)
     }
@@ -91,15 +91,18 @@ impl VersionConfig {
         self.base_path.join(&self.unity_loader)
     }
 
-    fn read_from_path(path: &Path) -> Result<Self> {
-        let read = std::fs::read(path)?;
-        let read = serde_json::from_slice(&read)?;
+    fn read_from_directory(dir_path: &Path) -> Result<Self> {
+        let file_path = dir_path.join(Self::CONFIG_FILE);
+        let read = std::fs::read(file_path)?;
+        let mut read: VersionConfig = serde_json::from_slice(&read)?;
+        read.base_path = dir_path.to_owned();
         Ok(read)
     }
 
-    fn write_to_file(&self, path: &Path) -> Result<()> {
+    fn write_to_directory(&self, dir_path: &Path) -> Result<()> {
         let to_write = serde_json::to_vec_pretty(self)?;
-        std::fs::write(path, to_write)?;
+        let file_path = dir_path.join(Self::CONFIG_FILE);
+        std::fs::write(file_path, to_write)?;
         Ok(())
     }
 }
