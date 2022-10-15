@@ -19,7 +19,7 @@ use tracing::{debug, error, trace, warn};
 use crate::hax::HaxState;
 
 pub async fn block_on_server(shared_state: Arc<Mutex<HaxState>>) {
-    let addr = SocketAddr::from(([127, 0, 0, 1], 48897));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 48898));
 
     let state = shared_state.clone();
     let service = ServiceBuilder::new()

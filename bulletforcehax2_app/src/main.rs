@@ -3,17 +3,16 @@
     windows_subsystem = "windows"
 )]
 
+mod asset_server;
 mod version_manager;
 
 use std::path::Path;
 
-use anyhow::Context;
 use bulletforcehax2_lib::hax::BulletForceHax;
 use bulletforcehax2_ui::BulletForceHaxMenu;
-use once_cell::sync::OnceCell;
 use tao_egui::WindowCreationSettings;
-use tracing::{debug, error, info};
-use version_manager::{VersionConfig, VersionManager};
+use tracing::{error, info};
+use version_manager::VersionManager;
 use wry::{
     application::{
         event::{Event, StartCause, WindowEvent},
@@ -21,66 +20,8 @@ use wry::{
         menu::{MenuBar, MenuItem, MenuItemAttributes, MenuType},
         window::WindowBuilder,
     },
-    http::{Request, Response, ResponseBuilder},
     webview::{WebContext, WebViewBuilder},
 };
-
-static GAME_VERSION: OnceCell<VersionConfig> = OnceCell::new();
-
-fn static_file_handler(request: &Request) -> Result<Response, wry::Error> {
-    let mut path = &request.uri()["static://".len()..];
-
-    if path.starts_with("localhost/") {
-        path = &path["localhost/".len()..];
-    }
-
-    let content = match path {
-        "" => Some(include_bytes!("../assets/index.html").to_vec()),
-        _ => None,
-    };
-
-    let builder = ResponseBuilder::new();
-
-    if let Some(content) = content {
-        builder
-            .status(200)
-            .header("Access-Control-Allow-Origin", "*")
-            .body(content.to_vec())
-            .map_err(Into::into)
-    } else {
-        builder
-            .status(404)
-            .body(b"not found".to_vec())
-            .map_err(Into::into)
-    }
-}
-
-fn bulletforce_handler(request: &Request) -> Result<Response, wry::Error> {
-    let mut path = &request.uri()["bulletforce://".len()..];
-
-    if path.starts_with("localhost/") {
-        path = &path["localhost/".len()..];
-    }
-
-    debug!("protocol req: {}", path);
-
-    let version = GAME_VERSION.get().unwrap();
-    let file_path = match path {
-        "Build/$$game$$.json" => version.get_game_json(),
-        "$$loader$$.js" => version.get_unity_loader(),
-        _ => version.get_path(path),
-    };
-    let content = std::fs::read(&file_path)
-        .with_context(|| format!("read file {:?} for req {:?}", file_path, path))
-        .unwrap();
-
-    let builder = ResponseBuilder::new();
-    builder
-        .status(200)
-        .header("Access-Control-Allow-Origin", "*")
-        .body(content)
-        .map_err(Into::into)
-}
 
 #[tokio::main]
 async fn main() {
@@ -103,9 +44,10 @@ async fn real_main() -> anyhow::Result<()> {
             None => return Ok(()),
         },
     };
+    info!("Initialized game version");
 
-    GAME_VERSION.set(version_info).ok().unwrap();
-    info!("Initialized game version global");
+    asset_server::start_asset_server(version_info, 48897).await;
+    info!("Initialized asset server");
 
     let mut hax = BulletForceHax::default();
     hax.start_webrequest_proxy();
@@ -151,10 +93,8 @@ async fn real_main() -> anyhow::Result<()> {
                 .unwrap()
                 .join("./bfhax_data/webview_data_directory"),
         )))
-        .with_custom_protocol("static".into(), static_file_handler)
-        .with_custom_protocol("bulletforce".into(), bulletforce_handler)
         .with_devtools(true)
-        .with_url("static://localhost/")?
+        .with_url("http://localhost:48897/")?
         .build()?;
 
     // initialize the hax menu

@@ -69,7 +69,7 @@ pub async fn block_on_server(
     new_connection_sender: mpsc::Sender<WebSocketProxy>,
     shared_state: Arc<Mutex<HaxState>>,
 ) {
-    let addr = SocketAddr::from(([127, 0, 0, 1], 48898));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 48899));
 
     let listener = TcpListener::bind(addr).await.unwrap();
 
