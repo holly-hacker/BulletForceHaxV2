@@ -169,7 +169,7 @@ fn init_logging() -> tracing_appender::non_blocking::WorkerGuard {
             OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc());
 
         let file_name = format!(
-            "log_{:04}{:02}{:02}_{:02}{:02}{:02}.json",
+            "log_{:04}{:02}{:02}_{:02}{:02}{:02}.jsonl",
             current_time.year(),
             u8::from(current_time.month()),
             current_time.day(),
