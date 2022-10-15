@@ -105,6 +105,32 @@ impl_u8_map_conversion! {
         room_option_flags: i32, // could add an impl to map this to an enum or something
     }
 
+    /// Request parameter of [operation_code::RAISE_EVENT]
+    #[derive(Debug)]
+    RaiseEvent {
+        @required
+        [parameter_code::CODE => PhotonDataType::Byte]
+        event_code: u8,
+
+        [parameter_code::DATA]
+        data: PhotonDataType,
+
+        [parameter_code::CACHE => PhotonDataType::Byte]
+        cache: u8,
+
+        [parameter_code::RECEIVER_GROUP => PhotonDataType::Byte]
+        receiver_group: u8,
+
+        [parameter_code::GROUP => PhotonDataType::Byte]
+        interest_group: u8,
+
+        [parameter_code::ACTOR_LIST => PhotonDataType::IntArray]
+        actor_list: Vec<i32>,
+
+        [parameter_code::EVENT_FORWARD => PhotonDataType::Boolean]
+        event_forward: bool,
+    }
+
     /// Parameter for [pun_event_code::RPC]. Contains a single [RpcCall].
     #[derive(Debug)]
     RpcEvent {

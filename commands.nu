@@ -11,7 +11,7 @@ def bfh_find_packet [
 
 # Gets a list of all RPC calls that occured in in the latest log file
 def bfh_rpc_calls [] {
-    bfh_latest_log_file | where $it.fields.message == "Incoming RPC call" | get fields | select sender method_name parameters
+    bfh_latest_log_file | where $it.fields.message == "RPC call" | get fields | select direction sender method_name parameters
 }
 
 # Opens the latest debug log file as json

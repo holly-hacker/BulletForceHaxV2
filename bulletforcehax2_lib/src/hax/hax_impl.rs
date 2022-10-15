@@ -5,7 +5,8 @@ use photon_lib::{
     highlevel::{
         constants::{event_code, operation_code, parameter_code, pun_event_code},
         structs::{
-            JoinGameRequest, JoinGameResponseSuccess, Player, RoomInfo, RoomInfoList, RpcEvent,
+            JoinGameRequest, JoinGameResponseSuccess, Player, RaiseEvent, RoomInfo, RoomInfoList,
+            RpcCall, RpcEvent,
         },
         PhotonMapConversion, PhotonParameterMapConversion,
     },
@@ -216,7 +217,42 @@ impl HaxState {
                         debug!(request = format!("_req:?"), "Game Join Request");
                     }
                     operation_code::RAISE_EVENT => {
-                        // todo
+                        let req = RaiseEvent::from_map(&mut operation_request.parameters)?;
+                        match req.event_code {
+                            pun_event_code::RPC => {
+                                // client->server RPC call
+                                let event_data = req
+                                    .data
+                                    .ok_or_else(|| anyhow::anyhow!("RPC call with no data"))?;
+
+                                let mut event_content = match event_data {
+                                    PhotonDataType::Hashtable(h) => h,
+                                    _ => anyhow::bail!("Expected hashtable args for RPC call"),
+                                };
+
+                                let data = RpcCall::from_map(&mut event_content)?;
+
+                                let sender = data.get_owner_id();
+                                let method_name =
+                                    get_rpc_method_name(&data).unwrap_or_else(|_| "?".into());
+                                let parameters = match &data.in_method_parameters {
+                                    Some(p) => p
+                                        .iter()
+                                        .map(|data| format!("{data:?}"))
+                                        .collect::<Vec<_>>()
+                                        .join(","),
+                                    None => String::new(),
+                                };
+                                debug!(
+                                    method_name = method_name.to_string(),
+                                    sender,
+                                    parameters,
+                                    direction = "server",
+                                    "RPC call"
+                                );
+                            }
+                            _ => (),
+                        }
                     }
                     _ => (),
                 }
@@ -278,7 +314,10 @@ impl HaxState {
                     };
                     debug!(
                         method_name = method_name.to_string(),
-                        sender, parameters, "Incoming RPC call"
+                        sender,
+                        parameters,
+                        direction = "client",
+                        "RPC call"
                     );
                 }
                 _ => (),
