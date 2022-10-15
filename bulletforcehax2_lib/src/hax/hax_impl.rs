@@ -4,7 +4,9 @@ use futures_util::lock::Mutex;
 use photon_lib::{
     highlevel::{
         constants::{event_code, operation_code, parameter_code, pun_event_code},
-        structs::{JoinGame, JoinGameResponse, Player, RoomInfo, RoomInfoList, RpcEvent},
+        structs::{
+            JoinGameRequest, JoinGameResponseSuccess, Player, RoomInfo, RoomInfoList, RpcEvent,
+        },
         PhotonMapConversion, PhotonParameterMapConversion,
     },
     photon_data_type::PhotonDataType,
@@ -141,50 +143,49 @@ impl HaxState {
                     };
                     let mut game_list = RoomInfoList::from_map(&mut event.parameters)?;
                     let mut changes_made = false;
-                    if let Some(games) = &mut game_list.games {
-                        for (k, v) in games.iter_mut() {
-                            if let (
-                                PhotonDataType::String(game_name),
-                                PhotonDataType::Hashtable(props),
-                            ) = (k, v)
+
+                    for (k, v) in game_list.games.iter_mut() {
+                        if let (
+                            PhotonDataType::String(game_name),
+                            PhotonDataType::Hashtable(props),
+                        ) = (k, v)
+                        {
+                            let mut room_info = RoomInfo::from_map(props)?;
+
+                            // NOTE: BulletForce has `gameVersion` as key so this wont match
+                            if let Some(PhotonDataType::String(version)) =
+                                room_info.custom_properties.get("gameversion")
                             {
-                                let mut room_info = RoomInfo::from_map(props)?;
-
-                                // NOTE: BulletForce has `gameVersion` as key so this wont match
-                                if let Some(PhotonDataType::String(version)) =
-                                    room_info.custom_properties.get("gameversion")
-                                {
-                                    if version.starts_with("newfps-") {
-                                        continue;
-                                    }
+                                if version.starts_with("newfps-") {
+                                    continue;
                                 }
-
-                                trace!("room {game_name}: {room_info:?}");
-
-                                if show_mobile {
-                                    force_games_web(&mut room_info);
-                                    changes_made = true;
-                                }
-                                if show_all_versions {
-                                    if let Some(version) = &game_version {
-                                        // versions seen in the wild are like '1.89.0_1.99', we only want the first half of that
-                                        let version = match version.split_once('_') {
-                                            Some((v1, _)) => v1,
-                                            None => version.as_str(),
-                                        };
-                                        force_games_current_ver(&mut room_info, version);
-                                        changes_made = true;
-                                    } else {
-                                        warn!("Tried to adjust game version of lobby games but it was not known");
-                                    }
-                                }
-                                if strip_passwords {
-                                    strip_password(&mut room_info);
-                                    changes_made = true;
-                                }
-
-                                room_info.into_map(props);
                             }
+
+                            trace!("room {game_name}: {room_info:?}");
+
+                            if show_mobile {
+                                force_games_web(&mut room_info);
+                                changes_made = true;
+                            }
+                            if show_all_versions {
+                                if let Some(version) = &game_version {
+                                    // versions seen in the wild are like '1.89.0_1.99', we only want the first half of that
+                                    let version = match version.split_once('_') {
+                                        Some((v1, _)) => v1,
+                                        None => version.as_str(),
+                                    };
+                                    force_games_current_ver(&mut room_info, version);
+                                    changes_made = true;
+                                } else {
+                                    warn!("Tried to adjust game version of lobby games but it was not known");
+                                }
+                            }
+                            if strip_passwords {
+                                strip_password(&mut room_info);
+                                changes_made = true;
+                            }
+
+                            room_info.into_map(props);
                         }
                     }
 
@@ -211,7 +212,7 @@ impl HaxState {
                 match operation_request.operation_code {
                     operation_code::JOIN_GAME => {
                         let props = &mut operation_request.parameters;
-                        let _req = JoinGame::from_map(props)?;
+                        let _req = JoinGameRequest::from_map(props)?;
                         debug!(request = format!("_req:?"), "Game Join Request");
                     }
                     operation_code::RAISE_EVENT => {
@@ -224,27 +225,25 @@ impl HaxState {
                 match operation_response.operation_code {
                     operation_code::JOIN_GAME if operation_response.return_code == 0 => {
                         let props = &mut operation_response.parameters;
-                        let mut resp = JoinGameResponse::from_map(props)?;
+                        let mut resp = JoinGameResponseSuccess::from_map(props)?;
                         debug!(response = format!("resp:?"), "Game Join Response");
-                        if let Some(player_props) = &mut resp.player_properties {
-                            let mut hax = futures::executor::block_on(hax.lock());
+                        let mut hax = futures::executor::block_on(hax.lock());
 
-                            hax.player_id = resp.actor_nr;
+                        hax.player_id = Some(resp.actor_nr);
 
-                            for (key, value) in player_props {
-                                let actor_id = match key {
-                                    PhotonDataType::Integer(key) => *key,
-                                    _ => continue,
-                                };
-                                let actor_props = match value {
-                                    PhotonDataType::Hashtable(actor_props) => actor_props,
-                                    _ => continue,
-                                };
-                                let actor_info = Player::from_map(&mut actor_props.clone())?;
+                        for (key, value) in &mut resp.player_properties {
+                            let actor_id = match key {
+                                PhotonDataType::Integer(key) => *key,
+                                _ => continue,
+                            };
+                            let actor_props = match value {
+                                PhotonDataType::Hashtable(actor_props) => actor_props,
+                                _ => continue,
+                            };
+                            let actor_info = Player::from_map(&mut actor_props.clone())?;
 
-                                debug!(actor_id, "Found new actor");
-                                hax.players.insert(actor_id, actor_info);
-                            }
+                            debug!(actor_id, "Found new actor");
+                            hax.players.insert(actor_id, actor_info);
                         }
                     }
                     _ => (),
@@ -265,22 +264,22 @@ impl HaxState {
                 }
                 pun_event_code::RPC => {
                     let mut event = RpcEvent::from_map(&mut event.parameters)?;
-                    if let Some(data) = event.extract_rpc_call()? {
-                        let sender = data.get_owner_id();
-                        let method_name = get_rpc_method_name(&data).unwrap_or_else(|_| "?".into());
-                        let parameters = match &data.in_method_parameters {
-                            Some(p) => p
-                                .iter()
-                                .map(|data| format!("{data:?}"))
-                                .collect::<Vec<_>>()
-                                .join(","),
-                            None => String::new(),
-                        };
-                        debug!(
-                            method_name = method_name.to_string(),
-                            sender, parameters, "Incoming RPC call"
-                        );
-                    }
+                    let data = event.extract_rpc_call()?;
+
+                    let sender = data.get_owner_id();
+                    let method_name = get_rpc_method_name(&data).unwrap_or_else(|_| "?".into());
+                    let parameters = match &data.in_method_parameters {
+                        Some(p) => p
+                            .iter()
+                            .map(|data| format!("{data:?}"))
+                            .collect::<Vec<_>>()
+                            .join(","),
+                        None => String::new(),
+                    };
+                    debug!(
+                        method_name = method_name.to_string(),
+                        sender, parameters, "Incoming RPC call"
+                    );
                 }
                 _ => (),
             },

@@ -7,16 +7,21 @@ use crate::highlevel::constants::{event_code, operation_code, pun_event_code};
 use crate::photon_data_type::PhotonDataType;
 use crate::PhotonHashmap;
 
+// NOTE: be very cautious when applying `@required`, parsing will fail if it is not present!
+// if you cannot prove that a property is actually always present, do not apply it.
+// Basically, always be more cautious than PUN is.
+
 impl_u8_map_conversion! {
     /// Parameter of [event_code::GAME_LIST] and [event_code::GAME_LIST_UPDATE]. Contains a list of [RoomInfo].
     RoomInfoList {
+        @required
         [parameter_code::GAME_LIST => PhotonDataType::Hashtable]
         games: PhotonHashmap,
     }
 
     /// Request parameter of [operation_code::JOIN_GAME].
     #[derive(Debug)]
-    JoinGame {
+    JoinGameRequest {
         [parameter_code::ROOM_NAME => PhotonDataType::String]
         room_name: String,
 
@@ -70,12 +75,13 @@ impl_u8_map_conversion! {
         room_option_flags: i32, // could add an impl to map this to an enum or something
     }
 
-    /// Response parameter of [operation_code::JOIN_GAME].
+    /// Response parameter of [operation_code::JOIN_GAME] on success (return code 0).
     #[derive(Debug)]
-    JoinGameResponse {
+    JoinGameResponseSuccess {
         [parameter_code::ROOM_NAME => PhotonDataType::String]
         room_name: String,
 
+        @required
         [parameter_code::ACTOR_NR => PhotonDataType::Integer]
         actor_nr: i32,
 
@@ -83,10 +89,12 @@ impl_u8_map_conversion! {
         actor_list: Vec<i32>,
 
         /// A hashmap over serialized [Player]s. The keys in this hashmap are integer actor ids.
+        @required
         [parameter_code::PLAYER_PROPERTIES => PhotonDataType::Hashtable]
         player_properties: PhotonHashmap,
 
         /// A serialized instance of [RoomInfo]
+        @required
         [parameter_code::GAME_PROPERTIES => PhotonDataType::Hashtable]
         game_properties: PhotonHashmap,
 
@@ -103,6 +111,7 @@ impl_u8_map_conversion! {
         [parameter_code::ACTOR_NR => PhotonDataType::Integer]
         sender_actor: i32,
 
+        @required
         [parameter_code::CUSTOM_EVENT_CONTENT => PhotonDataType::Hashtable]
         data: PhotonHashmap,
     }
@@ -161,11 +170,12 @@ impl_photon_map_conversion! {
 
     /// Describes a player. Most information wil be in [Player::custom_properties].
     Player {
-        // The player's nickname.
+        // It's possible that this is always present, but I'm not 100% sure.
+        /// The player's nickname.
         [PhotonDataType::Byte(actor_properties::PLAYER_NAME) => PhotonDataType::String]
         nickname: String,
 
-        /// Not always present.
+        // Surprisingly, not always present.
         [PhotonDataType::Byte(actor_properties::USER_ID) => PhotonDataType::String]
         user_id: String,
 
@@ -175,11 +185,16 @@ impl_photon_map_conversion! {
 
     /// An RPC call. Can be both sent and received by the client.
     RpcCall {
-        [@ PhotonDataType::Byte(0) => PhotonDataType::Integer]
+        @required
+        [PhotonDataType::Byte(0) => PhotonDataType::Integer]
         net_view_id: i32,
 
         [PhotonDataType::Byte(1) => PhotonDataType::Short]
         other_side_prefix: i16,
+
+        /// Present when sent from client to server, but not the other way around
+        [PhotonDataType::Byte(2) => PhotonDataType::Integer]
+        server_timestamp: i32,
 
         /// Mutually exclusive with [RpcCall::rpc_index]
         [PhotonDataType::Byte(3) => PhotonDataType::String]

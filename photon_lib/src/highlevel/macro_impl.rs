@@ -12,7 +12,8 @@ macro_rules! impl_u8_map_conversion {
                 $(
                     $(#[$field_attr:meta])*
                     $(
-                        [@ $map_key_req:expr $(=> $map_type_req:path)?]
+                        @required
+                        [$map_key_req:expr $(=> $map_type_req:path)?]
                         $field_name_req:ident: $field_type_req:ty
                     )?
                     $(
@@ -73,7 +74,7 @@ macro_rules! impl_u8_map_conversion {
                     })
                 }
 
-                fn into_map(mut self, map: &mut crate::ParameterMap) {
+                fn into_map(#[allow(unused_mut)] mut self, map: &mut crate::ParameterMap) {
                     $(
                         $(
                             map.insert($map_key_req, $($map_type_req)?(self.$field_name_req));
@@ -98,7 +99,8 @@ macro_rules! impl_photon_map_conversion {
                 $(
                     $(#[$field_attr:meta])*
                     $(
-                        [@ $map_key_req:expr $(=> $map_type_req:path)?]
+                        @required
+                        [$map_key_req:expr $(=> $map_type_req:path)?]
                         $field_name_req:ident: $field_type_req:ty
                     )?
                     $(
@@ -174,7 +176,7 @@ macro_rules! impl_photon_map_conversion {
                     })
                 }
 
-                fn into_map(mut self, map: &mut crate::PhotonHashmap) {
+                fn into_map(#[allow(unused_mut)] mut self, map: &mut crate::PhotonHashmap) {
                     $(
                         $(
                             map.insert($map_key_req, $($map_type_req)?(self.$field_name_req));
