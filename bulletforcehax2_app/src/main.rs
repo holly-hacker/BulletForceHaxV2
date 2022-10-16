@@ -101,6 +101,10 @@ async fn real_main() -> anyhow::Result<()> {
         .with_url("http://localhost:48897/")?
         .build()?;
 
+    if config.open_devtools {
+        webview.open_devtools();
+    }
+
     // initialize the hax menu
     let mut hax_app = BulletForceHaxMenu::new(state);
 
