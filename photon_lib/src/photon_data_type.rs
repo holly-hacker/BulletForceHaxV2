@@ -34,7 +34,7 @@ pub enum PhotonDataType {
     /// Data type 0x62, holds a `byte`
     Byte(u8),
     /// Data type 0x63, holds an `object`. This uses a deserialization function that is provided by the game.
-    Custom(u8, Vec<u8>),
+    Custom(CustomData),
     /// Data type 0x64, holds a `double`
     Double(OrderedFloat<f64>),
     /// Data type 0x65, holds [EventData]
@@ -132,19 +132,7 @@ impl PhotonDataType {
                 check_remaining!(bytes, 1);
                 Ok(PhotonDataType::Byte(bytes.get_u8()))
             }
-            0x63 => {
-                check_remaining!(bytes, 3);
-                let type_code = bytes.get_u8();
-                let len = bytes.get_i16();
-                if len < 0 {
-                    Err(ReadError::UnexpectedData("negative length for custom data"))
-                } else {
-                    check_remaining!(bytes, len as usize);
-                    let mut v = vec![0u8; len as usize];
-                    bytes.copy_to_slice(&mut v);
-                    Ok(PhotonDataType::Custom(type_code, v))
-                }
-            }
+            0x63 => Ok(PhotonDataType::Custom(CustomData::from_bytes(bytes)?)),
             0x64 => {
                 check_remaining!(bytes, 8);
                 Ok(PhotonDataType::Double(bytes.get_f64().into()))
@@ -338,16 +326,7 @@ impl PhotonDataType {
                 }
             }
             PhotonDataType::Byte(b) => buf.put_u8(*b),
-            PhotonDataType::Custom(type_code, v) => {
-                buf.put_u8(*type_code);
-
-                if v.len() > i16::MAX as usize {
-                    return Err(WriteError::ValueTooLarge("Custom Data"));
-                }
-
-                buf.put_i16(v.len() as i16);
-                buf.put_slice(v);
-            }
+            PhotonDataType::Custom(data) => data.to_bytes(buf)?,
             PhotonDataType::Double(d) => buf.put_f64(d.0),
             PhotonDataType::EventData(d) => d.to_bytes(buf)?,
             PhotonDataType::Float(f) => buf.put_f32(f.0),
@@ -435,7 +414,7 @@ impl PhotonDataType {
             PhotonDataType::Dictionary(_, _) => 0x44,
             PhotonDataType::StringArray(_) => 0x61,
             PhotonDataType::Byte(_) => 0x62,
-            PhotonDataType::Custom(_, _) => 0x63,
+            PhotonDataType::Custom(_) => 0x63,
             PhotonDataType::Double(_) => 0x64,
             PhotonDataType::EventData(_) => 0x65,
             PhotonDataType::Float(_) => 0x66,
@@ -455,10 +434,52 @@ impl PhotonDataType {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum CustomData {
+    Unrecognized(u8, Vec<u8>),
+}
+
+impl CustomData {
+    pub fn to_bytes(&self, buf: &mut impl BufMut) -> Result<(), WriteError> {
+        match self {
+            CustomData::Unrecognized(type_code, v) => {
+                buf.put_u8(*type_code);
+
+                if v.len() > i16::MAX as usize {
+                    return Err(WriteError::ValueTooLarge("Custom Data"));
+                }
+
+                buf.put_i16(v.len() as i16);
+                buf.put_slice(v);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn from_bytes(bytes: &mut impl Buf) -> Result<Self, ReadError> {
+        check_remaining!(bytes, 3);
+        let type_code = bytes.get_u8();
+
+        #[allow(clippy::match_single_binding)]
+        match type_code {
+            _ => {
+                let len = bytes.get_i16();
+                if len < 0 {
+                    Err(ReadError::UnexpectedData("negative length for custom data"))
+                } else {
+                    check_remaining!(bytes, len as usize);
+                    let mut v = vec![0u8; len as usize];
+                    bytes.copy_to_slice(&mut v);
+                    Ok(CustomData::Unrecognized(type_code, v))
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::PhotonDataType;
-    use crate::photon_message::*;
+    use crate::{photon_data_type::*, photon_message::*};
 
     macro_rules! generate_test {
         ($name: ident, $val: expr, $hex: expr) => {
@@ -640,7 +661,7 @@ mod tests {
     // NOTE: original code had tests to detect vec2, vec3, quaternion, etc. we're not supporting that this time
     generate_test!(
         other_custom,
-        PhotonDataType::Custom(15, vec![0xDE, 0xAD, 0xBE, 0xEF]),
+        PhotonDataType::Custom(CustomData::Unrecognized(15, vec![0xDE, 0xAD, 0xBE, 0xEF])),
         "630F0004DEADBEEF"
     );
 }

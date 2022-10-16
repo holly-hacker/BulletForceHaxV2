@@ -5,15 +5,15 @@ use photon_lib::{
     highlevel::{
         constants::{event_code, operation_code, parameter_code, pun_event_code},
         structs::{
-            JoinGameRequest, JoinGameResponseSuccess, Player, RaiseEvent, RoomInfo, RoomInfoList,
-            RpcCall, RpcEvent,
+            InstantiationEvent, InstantiationEventData, JoinGameRequest, JoinGameResponseSuccess,
+            Player, RaiseEvent, RoomInfo, RoomInfoList, RpcCall, RpcEvent, SendSerializeEvent,
         },
         PhotonMapConversion, PhotonParameterMapConversion,
     },
     photon_data_type::PhotonDataType,
     photon_message::PhotonMessage,
 };
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, trace, warn};
 
 use crate::{
     hax::HaxState,
@@ -292,9 +292,29 @@ impl HaxState {
                     if let Some(PhotonDataType::Hashtable(props)) = props {
                         let player = Player::from_map(props)?;
 
-                        info!(
+                        debug!(
                             "Received player info for {:?} (id {:?})",
                             player.nickname, player.user_id
+                        );
+                    }
+                }
+                pun_event_code::INSTANTIATION => {
+                    let mut event = InstantiationEvent::from_map(&mut event.parameters)?;
+                    let event_data = InstantiationEventData::from_map(&mut event.data)?;
+                    debug!(data = format!("{event_data:?}"), "Instantiation");
+                }
+                pun_event_code::SEND_SERIALIZE | pun_event_code::SEND_SERIALIZE_RELIABLE => {
+                    let event = SendSerializeEvent::from_map(&mut event.parameters)?;
+                    let serialized_data = event
+                        .get_serialized_data()
+                        .ok_or_else(|| anyhow::anyhow!("SendSerialize data error"))?;
+
+                    for obj in serialized_data {
+                        trace!(
+                            direction = "client",
+                            view_id = obj.view_id,
+                            data = format!("{:?}", obj.data_stream),
+                            "SendSerialize"
                         );
                     }
                 }

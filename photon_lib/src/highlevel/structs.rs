@@ -4,7 +4,7 @@ pub use super::structs_impl::*;
 use crate::highlevel::constants::{actor_properties, game_property_key, parameter_code};
 #[allow(unused)]
 use crate::highlevel::constants::{event_code, operation_code, pun_event_code};
-use crate::photon_data_type::PhotonDataType;
+use crate::photon_data_type::{CustomData, PhotonDataType};
 use crate::PhotonHashmap;
 
 // NOTE: be very cautious when applying `@required`, parsing will fail if it is not present!
@@ -131,6 +131,26 @@ impl_u8_map_conversion! {
         event_forward: bool,
     }
 
+    /// Parameter for [pun_event_code::INSTANTIATION].
+    InstantiationEvent {
+        [parameter_code::ACTOR_NR => PhotonDataType::Integer]
+        sender_actor: i32,
+
+        @required
+        [parameter_code::DATA => PhotonDataType::Hashtable]
+        data: PhotonHashmap,
+    }
+
+    /// Parameter for [pun_event_code::SEND_SERIALIZE] and [pun_event_code::SEND_SERIALIZE_RELIABLE].
+    SendSerializeEvent {
+        [parameter_code::ACTOR_NR => PhotonDataType::Integer]
+        sender_actor: i32,
+
+        @required
+        [parameter_code::DATA => PhotonDataType::Hashtable]
+        data: PhotonHashmap,
+    }
+
     /// Parameter for [pun_event_code::RPC]. Contains a single [RpcCall].
     #[derive(Debug)]
     RpcEvent {
@@ -209,6 +229,47 @@ impl_photon_map_conversion! {
         is_inactive: bool,
     }
 
+    /// Event data from [InstantiationEvent].
+    #[derive(Debug)]
+    InstantiationEventData {
+        @required
+        [PhotonDataType::Byte(0) => PhotonDataType::String]
+        prefab_name: String,
+
+        /// # Remarks
+        /// Of type Vector3
+        [PhotonDataType::Byte(1) => PhotonDataType::Custom]
+        position: CustomData,
+
+        /// # Remarks
+        /// Of type Quaternion
+        [PhotonDataType::Byte(2) => PhotonDataType::Custom]
+        rotation: CustomData,
+
+        [PhotonDataType::Byte(3) => PhotonDataType::Byte]
+        group: u8,
+
+        /// Should be of same length as [Self::incoming_instantiation_data].
+        [PhotonDataType::Byte(4) => PhotonDataType::IntArray]
+        views_ids: Vec<i32>,
+
+        /// Should be of same length as [Self::views_ids].
+        [PhotonDataType::Byte(5) => PhotonDataType::ObjectArray]
+        incoming_instantiation_data: Vec<PhotonDataType>,
+
+        @required
+        [PhotonDataType::Byte(6) => PhotonDataType::Integer]
+        server_time: i32,
+
+        /// The view id
+        @required
+        [PhotonDataType::Byte(7) => PhotonDataType::Integer]
+        instantiation_id: i32,
+
+        [PhotonDataType::Byte(8) => PhotonDataType::Short]
+        obj_level_prefix: i16,
+    }
+
     /// An RPC call. Can be both sent and received by the client.
     RpcCall {
         @required
@@ -233,6 +294,14 @@ impl_photon_map_conversion! {
         [PhotonDataType::Byte(5) => PhotonDataType::Byte]
         rpc_index: u8,
     }
+}
+
+/// A serialized object stream. Can represent a `Monobehavior`, a `Transform`, a `Rigidbody` or a `RigidBody2D`.
+///
+/// See [SendSerializeEvent].
+pub struct SerializedData {
+    pub view_id: i32,
+    pub data_stream: Vec<PhotonDataType>,
 }
 
 #[cfg(test)]
