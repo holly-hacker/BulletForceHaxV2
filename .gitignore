@@ -1,8 +1,9 @@
 /target
 .idea/
 
-# download cache
+# bfhax user data
 bfhax_data
+config.toml
 
 # coverage data
 *.profraw

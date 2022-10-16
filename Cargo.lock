@@ -82,6 +82,7 @@ dependencies = [
  "tao_egui",
  "time",
  "tokio",
+ "toml",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",

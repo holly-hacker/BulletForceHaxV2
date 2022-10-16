@@ -25,6 +25,7 @@ bytesize = "1.1"
 time = { version = "0.3", features = ["local-offset"] }
 hyper = { version = "0.14", features = ["server", "http1", "runtime"] } # only what we need for the asset server
 clap = { version = "4", features = ["cargo"] }
+toml = "0.5"
 
 # eframe is only used for the download dialog, because it runs before the webview event loop
 eframe = { package = "eframe_tao", version = "0.20" }
