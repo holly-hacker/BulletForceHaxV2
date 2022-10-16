@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-use clap::{command, value_parser, Arg, ArgAction, ArgMatches, Command};
-use serde::Deserialize;
+use clap::{command, parser::ValueSource, value_parser, Arg, ArgAction, ArgMatches, Command};
+use serde::{Deserialize, Serialize};
 
 // NOTE: these values are copied to the `serde(rename)` attributes in PartialConfig
 const ARG_CONFIG_FILE: &str = "config";
@@ -9,20 +9,23 @@ const ARG_PROFILE_DIR: &str = "browser-profile";
 const ARG_GAME_DIR: &str = "game-files";
 const ARG_LOG_DIR: &str = "logs";
 const ARG_OPEN_DEVTOOLS: &str = "open-devtools";
+const ARG_HAX: &str = "hax";
 
 const DEFAULT_CONFIG_FILE: &str = "config.toml";
 const DEFAULT_PROFILE_DIR: &str = "bfhax_data/browser_profile";
 const DEFAULT_GAME_DIR: &str = "bfhax_data/game_files";
 const DEFAULT_LOG_DIR: &str = "bfhax_data/logs";
 const DEFAULT_OPEN_DEVTOOLS: bool = false;
+const DEFAULT_HAX: bool = false;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Config {
     pub config_file: PathBuf,
     pub profile_dir: PathBuf,
     pub game_dir: PathBuf,
     pub log_dir: PathBuf,
     pub open_devtools: bool,
+    pub hax: bool,
 }
 
 #[derive(Default, Deserialize)]
@@ -37,6 +40,8 @@ pub struct PartialConfig {
     pub log_dir: Option<PathBuf>,
     #[serde(rename = "open-devtools")]
     pub open_devtools: Option<bool>,
+    #[serde(rename = "hax")]
+    pub hax: Option<bool>,
 }
 
 impl Config {
@@ -47,6 +52,7 @@ impl Config {
             game_dir: new.game_dir.unwrap_or(self.game_dir),
             log_dir: new.log_dir.unwrap_or(self.log_dir),
             open_devtools: new.open_devtools.unwrap_or(self.open_devtools),
+            hax: new.hax.unwrap_or(self.hax),
         }
     }
 }
@@ -59,6 +65,7 @@ impl Default for Config {
             game_dir: PathBuf::from(DEFAULT_GAME_DIR),
             log_dir: PathBuf::from(DEFAULT_LOG_DIR),
             open_devtools: DEFAULT_OPEN_DEVTOOLS,
+            hax: DEFAULT_HAX,
         }
     }
 }
@@ -70,7 +77,11 @@ impl From<ArgMatches> for PartialConfig {
             profile_dir: matches.get_one::<PathBuf>(ARG_PROFILE_DIR).cloned(),
             game_dir: matches.get_one::<PathBuf>(ARG_GAME_DIR).cloned(),
             log_dir: matches.get_one::<PathBuf>(ARG_LOG_DIR).cloned(),
-            open_devtools: matches.get_one::<bool>(ARG_OPEN_DEVTOOLS).cloned(),
+            open_devtools: (matches.value_source(ARG_OPEN_DEVTOOLS)
+                == Some(ValueSource::CommandLine))
+            .then(|| matches.get_one::<bool>(ARG_OPEN_DEVTOOLS).cloned().unwrap()),
+            hax: (matches.value_source(ARG_HAX) == Some(ValueSource::CommandLine))
+                .then(|| matches.get_one::<bool>(ARG_HAX).cloned().unwrap()),
         }
     }
 }
@@ -108,6 +119,13 @@ fn build_command() -> Command {
                 .value_parser(value_parser!(PathBuf)),
         )
         .arg(
+            Arg::new(ARG_HAX)
+                .long(ARG_HAX)
+                .help("Enable cheat functionality.")
+                .required(false)
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
             Arg::new(ARG_PROFILE_DIR)
                 .long(ARG_PROFILE_DIR)
                 .value_name("PATH")
@@ -134,7 +152,7 @@ fn build_command() -> Command {
         .arg(
             Arg::new(ARG_OPEN_DEVTOOLS)
                 .long(ARG_OPEN_DEVTOOLS)
-                .help(format!("Automatically open the webview's devtools on start."))
+                .help("Automatically open the webview's devtools on start.")
                 .required(false)
                 .action(ArgAction::SetTrue),
         )

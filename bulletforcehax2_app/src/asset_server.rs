@@ -2,20 +2,23 @@ use std::sync::Arc;
 use std::{convert::Infallible, net::SocketAddr};
 
 use anyhow::Context;
+use http::response::Builder as ResponseBuilder;
+use hyper::http;
 use hyper::service::{make_service_fn, service_fn};
-use hyper::{http::response::Builder as ResponseBuilder, Body, Request, Response, Server};
+use hyper::{Body, Request, Response, Server};
 use tracing::{debug, error};
 
+use crate::config::Config;
 use crate::version_manager::VersionConfig;
 
-pub async fn start_asset_server(version: VersionConfig, port: u16) {
-    tokio::spawn(async move { block_on_server(version, port).await });
+pub async fn start_asset_server(version: VersionConfig, config: Config, port: u16) {
+    tokio::spawn(async move { block_on_server(version, config, port).await });
 }
 
-async fn block_on_server(version: VersionConfig, port: u16) {
+async fn block_on_server(version: VersionConfig, config: Config, port: u16) {
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
 
-    let arc = Arc::new(version);
+    let arc = Arc::new((version, config));
 
     let server = Server::bind(&addr).serve(make_service_fn(move |_conn| {
         let arc = arc.clone();
@@ -31,14 +34,23 @@ async fn block_on_server(version: VersionConfig, port: u16) {
 #[tracing::instrument(name = "AssetServer", level = "info", skip_all, fields(uri = request.uri().path()))]
 async fn handler(
     request: Request<Body>,
-    version: Arc<VersionConfig>,
+    arc: Arc<(VersionConfig, Config)>,
 ) -> anyhow::Result<Response<Body>> {
     let path = request.uri().path();
     debug!("Incoming request for asset server");
 
+    let (version, config) = arc.as_ref();
+
     if path == "/" {
         const INDEX: &[u8] = include_bytes!("../assets/index.html");
-        return Ok(ResponseBuilder::new().status(200).body(INDEX.into())?);
+        return Ok(ResponseBuilder::new().body(INDEX.into())?);
+    }
+
+    if path == "/config.json" {
+        let data = serde_json::to_vec(config).unwrap();
+        return Ok(ResponseBuilder::new()
+            .header(http::header::CONTENT_TYPE, "application/json")
+            .body(data.into())?);
     }
 
     let file_path = match path {
@@ -59,8 +71,7 @@ async fn handler(
 
         let builder = ResponseBuilder::new();
         let result = builder
-            .status(200)
-            .header("Access-Control-Allow-Origin", "*")
+            .header(http::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
             .body(content.into())?;
         return Ok(result);
     }

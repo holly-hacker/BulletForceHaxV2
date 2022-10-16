@@ -10,7 +10,7 @@ mod version_manager;
 use bulletforcehax2_lib::hax::BulletForceHax;
 use bulletforcehax2_ui::BulletForceHaxMenu;
 use tao_egui::WindowCreationSettings;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 use version_manager::VersionManager;
 use wry::{
     application::{
@@ -35,6 +35,7 @@ async fn real_main() -> anyhow::Result<()> {
 
     // initialize logging
     let _guard = init_logging(&config);
+    debug!(config = format!("{config:?}"), "Loaded config");
 
     // version manager init
     let version_manager = VersionManager::new(&config.game_dir).unwrap();
@@ -48,15 +49,15 @@ async fn real_main() -> anyhow::Result<()> {
     };
     info!("Initialized game version");
 
-    asset_server::start_asset_server(version_info, 48897).await;
+    asset_server::start_asset_server(version_info, config.clone(), 48897).await;
     info!("Initialized asset server");
 
     let mut hax = BulletForceHax::default();
-    hax.start_webrequest_proxy();
-    hax.start_websocket_proxy();
-    info!("Initialized hax");
-
-    let state = hax.get_state();
+    if config.hax {
+        hax.start_webrequest_proxy();
+        hax.start_websocket_proxy();
+        info!("Initialized hax");
+    }
 
     // create menu structure
     let mut file_submenu = MenuBar::new();
@@ -73,18 +74,14 @@ async fn real_main() -> anyhow::Result<()> {
     // initialize an event loop
     let event_loop = EventLoop::new();
 
-    // create the egui window
-    let mut egui_window = tao_egui::TaoEguiWindow::new(
-        &event_loop,
-        WindowCreationSettings {
-            size: (300f32, 600f32),
-            window_title: "Hax Menu".into(),
-        },
-    );
-
     // create the window for the webview
     let window = WindowBuilder::new()
-        .with_title("BulletForceHax")
+        .with_title(
+            config
+                .hax
+                .then_some("BulletForceHax")
+                .unwrap_or("Bullet Force"),
+        )
         .with_menu(menu)
         .build(&event_loop)?;
 
@@ -106,13 +103,27 @@ async fn real_main() -> anyhow::Result<()> {
     }
 
     // initialize the hax menu
-    let mut hax_app = BulletForceHaxMenu::new(state);
+    let mut hax_app = config.hax.then(|| {
+        // create the egui window
+        let egui_window = tao_egui::TaoEguiWindow::new(
+            &event_loop,
+            WindowCreationSettings {
+                size: (300f32, 600f32),
+                window_title: "Hax Menu".into(),
+            },
+        );
+
+        let state = hax.get_state();
+        (egui_window, BulletForceHaxMenu::new(state))
+    });
 
     // start event loop
     event_loop.run(move |event, _, control_flow| {
-        *control_flow = egui_window
-            .handle_event(&event, |ctx| hax_app.update(ctx))
-            .unwrap_or(ControlFlow::Wait);
+        if let Some((egui_window, hax_app)) = &mut hax_app {
+            *control_flow = egui_window
+                .handle_event(&event, |ctx| hax_app.update(ctx))
+                .unwrap_or(ControlFlow::Wait);
+        }
 
         match event {
             Event::NewEvents(StartCause::Init) => {

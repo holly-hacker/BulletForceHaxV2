@@ -29,6 +29,7 @@
         }
 
         function processWasmImports(imports) {
+            console.log("Processing wasm imports");
             let env = imports.env;
 
             env["_JS_Eval_EvalJS"] = (arg) => { console.log("EVAL JS", ptr_to_str(arg)) };
@@ -45,21 +46,25 @@
                 }
             }
 
-            // enable hooks
-            let orig_socketCreate = env["_SocketCreate"];
-            env["_SocketCreate"] = function (url, protocols) {
-                // NOTE: I can pass the protocol to the proxy as well, that may be useful in the future
-                url = str_to_ptr("ws://localhost:48899/?" + ptr_to_str(url));
-                let ret = orig_socketCreate(url, protocols);
-                console.log("_SocketCreate", ptr_to_str(url), ptr_to_str(protocols), ret);
-                return ret;
-            }
-            let orig_webRequestCreate = env["_JS_WebRequest_Create"];
-            env["_JS_WebRequest_Create"] = function (url, method) {
-                url = str_to_ptr("http://localhost:48898/?" + ptr_to_str(url));
-                let ret = orig_webRequestCreate(url, method);
-                console.log("_JS_WebRequest_Create", ptr_to_str(url), ptr_to_str(method), ret);
-                return ret;
+            if (bfh_config.hax) {
+                console.log("Enabling web request and websocket hooks")
+
+                let orig_socketCreate = env["_SocketCreate"];
+                env["_SocketCreate"] = function (url, protocols) {
+                    // NOTE: I can pass the protocol to the proxy as well, that may be useful in the future
+                    url = str_to_ptr("ws://localhost:48899/?" + ptr_to_str(url));
+                    let ret = orig_socketCreate(url, protocols);
+                    console.log("_SocketCreate", ptr_to_str(url), ptr_to_str(protocols), ret);
+                    return ret;
+                }
+
+                let orig_webRequestCreate = env["_JS_WebRequest_Create"];
+                env["_JS_WebRequest_Create"] = function (url, method) {
+                    url = str_to_ptr("http://localhost:48898/?" + ptr_to_str(url));
+                    let ret = orig_webRequestCreate(url, method);
+                    console.log("_JS_WebRequest_Create", ptr_to_str(url), ptr_to_str(method), ret);
+                    return ret;
+                }
             }
         }
 
@@ -77,12 +82,17 @@
             return orig_instantiateStreaming(source, importObject);
         }
 
+        fetch('config.json')
+            .then((response) => response.json())
+            .then((config) => {
+                console.log("BFH config", config);
+                window.bfh_config = config;
 
-        const url = "Build/$$game$$.json";
-        window.gameInstance = UnityLoader.instantiate("gameContainer", url, {
-            Module: { "_$fake_ccall$": x => x, },
-        });
-        console.log("Game instance", window.gameInstance);
+                window.gameInstance = UnityLoader.instantiate("gameContainer", "Build/$$game$$.json", {
+                    Module: { "_$fake_ccall$": x => x, },
+                });
+                console.log("Game instance created", window.gameInstance);
+            })
     </script>
 </body>
 
