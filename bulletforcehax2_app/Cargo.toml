@@ -2,6 +2,7 @@
 name = "app"
 version = "0.1.0"
 edition = "2021"
+description = "Bullet Force launcher and MITM-based hax"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -23,6 +24,7 @@ wry = { version = "0.21", default-features = false, features = ["devtools"] }
 bytesize = "1.1"
 time = { version = "0.3", features = ["local-offset"] }
 hyper = { version = "0.14", features = ["server", "http1", "runtime"] } # only what we need for the asset server
+clap = { version = "4", features = ["cargo"] }
 
 # eframe is only used for the download dialog, because it runs before the webview event loop
 eframe = { package = "eframe_tao", version = "0.20" }

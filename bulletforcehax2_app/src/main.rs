@@ -4,9 +4,8 @@
 )]
 
 mod asset_server;
+mod config;
 mod version_manager;
-
-use std::path::Path;
 
 use bulletforcehax2_lib::hax::BulletForceHax;
 use bulletforcehax2_ui::BulletForceHaxMenu;
@@ -31,11 +30,14 @@ async fn main() {
 }
 
 async fn real_main() -> anyhow::Result<()> {
+    // read config from cli args
+    let config = config::get_config();
+
     // initialize logging
-    let _guard = init_logging();
+    let _guard = init_logging(&config);
 
     // version manager init
-    let version_manager = VersionManager::new(Path::new("./bfhax_data/game_files")).unwrap();
+    let version_manager = VersionManager::new(&config.game_dir).unwrap();
 
     let version_info = match version_manager.version() {
         Some(x) => x,
@@ -87,12 +89,14 @@ async fn real_main() -> anyhow::Result<()> {
         .build(&event_loop)?;
 
     // initialize the wry webview
+    // https://github.com/rust-lang/rust/issues/92750
+    let webview_profile_path = if config.profile_dir.is_absolute() {
+        config.profile_dir.clone()
+    } else {
+        std::env::current_dir().unwrap().join(&config.profile_dir)
+    };
     let webview = WebViewBuilder::new(window)?
-        .with_web_context(&mut WebContext::new(Some(
-            std::env::current_dir()
-                .unwrap()
-                .join("./bfhax_data/webview_data_directory"),
-        )))
+        .with_web_context(&mut WebContext::new(Some(webview_profile_path)))
         .with_devtools(true)
         .with_url("http://localhost:48897/")?
         .build()?;
@@ -139,7 +143,7 @@ async fn real_main() -> anyhow::Result<()> {
     });
 }
 
-fn init_logging() -> tracing_appender::non_blocking::WorkerGuard {
+fn init_logging(config: &config::Config) -> tracing_appender::non_blocking::WorkerGuard {
     use tracing::{level_filters::LevelFilter, Level};
     use tracing_subscriber::prelude::*;
 
@@ -180,7 +184,7 @@ fn init_logging() -> tracing_appender::non_blocking::WorkerGuard {
 
         // we're using tracing_appender because it provides non-blocking logging
         // just logging using std::fs::File may be enough, but has to be tested first.
-        let appender = tracing_appender::rolling::never("bfhax_data/logs", file_name);
+        let appender = tracing_appender::rolling::never(&config.log_dir, file_name);
         let (non_blocking_appender, guard) = tracing_appender::non_blocking(appender);
 
         let layer = tracing_subscriber::fmt::layer()
