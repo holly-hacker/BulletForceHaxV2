@@ -66,6 +66,8 @@ async fn handler(
         // NOTE: I really wanted to stream this from disk, instead of reading it entirely into memory. I'd have to
         // convert a File into something that implements futures_util::stream::Stream<Item = Result<Bytes, E>> but it
         // seem not too trivial?
+        // tokio_util::io::ReaderStream could be an option but it pulls in a bunch of dependencies and I dont know if
+        // there will be a performance improvement
         let content = std::fs::read(&file_path)
             .with_context(|| format!("read file {:?} for req {:?}", file_path, path))?;
 
