@@ -5,7 +5,10 @@ use tokio::sync::mpsc::Receiver;
 use tracing::{debug, info, warn};
 
 use super::{BulletForceHax, HaxState};
-use crate::proxy::{websocket_proxy::WebSocketProxy, WebSocketServer};
+use crate::{
+    hax::{GameplayState, LobbyState},
+    proxy::{websocket_proxy::WebSocketProxy, WebSocketServer},
+};
 
 impl BulletForceHax {
     /// Creates the websocket proxy handler thread. Panics if one has already been created.
@@ -44,10 +47,10 @@ impl BulletForceHax {
                     let state = state.clone();
                     {
                         let mut locked_state = state.lock().await;
-                        if locked_state.lobby_socket.is_some() {
+                        if locked_state.lobby_state.is_some() {
                             warn!("lobby socket connection created while one already existed! did it not get cleared correctly?");
                         }
-                        locked_state.lobby_socket = Some(conn);
+                        locked_state.lobby_state = Some((conn, LobbyState::default()));
                     }
 
                     match notify_closed {
@@ -59,10 +62,10 @@ impl BulletForceHax {
 
                                 info!("lobby websocket closed");
                                 let mut locked_state = state.lock().await;
-                                if locked_state.lobby_socket.is_none() {
+                                if locked_state.lobby_state.is_none() {
                                     warn!("lobby socket connection was closed but it did not exist yet");
                                 }
-                                locked_state.lobby_socket = None;
+                                locked_state.lobby_state = None;
                             });
                         }
                         None => warn!("A lobby websocket task was created but no closed Notify was found. Detecting socket closing will not work"),
@@ -75,10 +78,10 @@ impl BulletForceHax {
                     let state = state.clone();
                     {
                         let mut locked_state = state.lock().await;
-                        if locked_state.gameplay_socket.is_some() {
+                        if locked_state.gameplay_state.is_some() {
                             warn!("gameplay socket connection created while one already existed! did it not get cleared correctly?");
                         }
-                        locked_state.gameplay_socket = Some(conn);
+                        locked_state.gameplay_state = Some((conn, GameplayState::default()));
                     }
 
                     match notify_closed {
@@ -90,10 +93,10 @@ impl BulletForceHax {
 
                                 info!("gameplay websocket closed");
                                 let mut locked_state = state.lock().await;
-                                if locked_state.gameplay_socket.is_none() {
+                                if locked_state.gameplay_state.is_none() {
                                     warn!("gameplay socket connection was closed but it did not exist yet");
                                 }
-                                locked_state.gameplay_socket = None;
+                                locked_state.gameplay_state = None;
                             });
                         }
                         None => warn!("A gameplay websocket task was created but no closed Notify was found. Detecting socket closing will not work"),

@@ -30,12 +30,13 @@ impl BulletForceHaxMenu {
         egui::CentralPanel::default().show(ctx, |ui| {
             let mut hax = futures::executor::block_on(self.hax.lock());
 
-            ui.heading("Info");
-            if let Some(user_id) = &hax.user_id {
+            ui.heading("General info");
+            if let Some(user_id) = &hax.global_state.user_id {
                 ui.label(format!("User ID: {user_id}"));
             }
-            if let Some(version) = &hax.game_version {
-                ui.label(format!("Game version: {version}"));
+            if let Some(version) = &hax.global_state.version {
+                ui.label(format!("Game version: {}", version.game_version));
+                ui.label(format!("Photon version: {}", version.photon_version));
             }
             ui.add_space(16f32);
 
@@ -70,7 +71,7 @@ impl BulletForceHaxMenu {
             });
             ui.add_space(16f32);
 
-            if hax.gameplay_socket.is_some() {
+            if let Some((_, state)) = &hax.gameplay_state {
                 ui.heading("Info - Players");
                 {
                     TableBuilder::new(ui)
@@ -87,7 +88,7 @@ impl BulletForceHaxMenu {
                             });
                         })
                         .body(|mut body| {
-                            for (actor_id, player) in &hax.players {
+                            for (actor_id, player) in &state.players {
                                 body.row(18.0, |mut row| {
                                     row.col(|ui| {
                                         ui.label(actor_id.to_string());
@@ -108,11 +109,8 @@ impl BulletForceHaxMenu {
             #[cfg(debug_assertions)]
             {
                 ui.heading("Debug");
-                ui.label(format!("lobby socket: {}", hax.lobby_socket.is_some()));
-                ui.label(format!(
-                    "gameplay socket: {}",
-                    hax.gameplay_socket.is_some()
-                ));
+                ui.label(format!("lobby socket: {}", hax.lobby_state.is_some()));
+                ui.label(format!("gameplay socket: {}", hax.gameplay_state.is_some()));
                 ui.add_space(16f32);
             }
 

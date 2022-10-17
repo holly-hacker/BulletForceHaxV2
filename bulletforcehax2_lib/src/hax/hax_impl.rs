@@ -21,6 +21,8 @@ use crate::{
     proxy::{Direction, WebSocketServer},
 };
 
+use super::VersionInfo;
+
 #[allow(dead_code)]
 enum WebSocketHookAction {
     /// Replace the original message with the given one
@@ -119,13 +121,17 @@ impl HaxState {
                             .parameters
                             .get(&parameter_code::APP_VERSION)
                         {
-                            hax.game_version = Some(app_version.clone());
+                            let version = app_version.split_once('_');
+                            hax.global_state.version = version.map(|(game, photon)| VersionInfo {
+                                game_version: game.to_string(),
+                                photon_version: photon.to_string(),
+                            });
                         }
 
                         if let Some(PhotonDataType::String(user_id)) =
                             operation_request.parameters.get(&parameter_code::USER_ID)
                         {
-                            hax.user_id = Some(user_id.clone());
+                            hax.global_state.user_id = Some(user_id.clone());
                         }
                     }
                     _ => (),
@@ -139,7 +145,7 @@ impl HaxState {
                             hax.strip_passwords,
                             hax.show_mobile_games,
                             hax.show_other_versions,
-                            hax.game_version.clone(),
+                            hax.global_state.version.clone(),
                         )
                     };
                     let mut game_list = RoomInfoList::from_map(&mut event.parameters)?;
@@ -170,12 +176,7 @@ impl HaxState {
                             }
                             if show_all_versions {
                                 if let Some(version) = &game_version {
-                                    // versions seen in the wild are like '1.89.0_1.99', we only want the first half of that
-                                    let version = match version.split_once('_') {
-                                        Some((v1, _)) => v1,
-                                        None => version.as_str(),
-                                    };
-                                    force_games_current_ver(&mut room_info, version);
+                                    force_games_current_ver(&mut room_info, &version.game_version);
                                     changes_made = true;
                                 } else {
                                     warn!("Tried to adjust game version of lobby games but it was not known");
@@ -264,8 +265,12 @@ impl HaxState {
                         let mut resp = JoinGameResponseSuccess::from_map(props)?;
                         debug!(response = format!("resp:?"), "Game Join Response");
                         let mut hax = futures::executor::block_on(hax.lock());
+                        let (_, state) = match &mut hax.gameplay_state {
+                            Some(x) => x,
+                            _ => anyhow::bail!("gameplay state is None"),
+                        };
 
-                        hax.player_id = Some(resp.actor_nr);
+                        state.player_id = Some(resp.actor_nr);
 
                         for (key, value) in &mut resp.player_properties {
                             let actor_id = match key {
@@ -279,7 +284,7 @@ impl HaxState {
                             let actor_info = Player::from_map(&mut actor_props.clone())?;
 
                             debug!(actor_id, "Found new actor");
-                            hax.players.insert(actor_id, actor_info);
+                            state.players.insert(actor_id, actor_info);
                         }
                     }
                     _ => (),

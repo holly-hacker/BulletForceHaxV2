@@ -22,18 +22,19 @@ pub struct BulletForceHax {
     state: Arc<futures_util::lock::Mutex<HaxState>>,
 }
 
+impl BulletForceHax {
+    pub fn get_state(&self) -> Arc<futures_util::lock::Mutex<HaxState>> {
+        self.state.clone()
+    }
+}
+
 /// The internal state.
 #[derive(Default)]
 pub struct HaxState {
-    // socket info
-    pub lobby_socket: Option<WebSocketProxy>,
-    pub gameplay_socket: Option<WebSocketProxy>,
-
-    // info
-    pub user_id: Option<String>,
-    pub game_version: Option<String>,
-    pub player_id: Option<i32>,
-    pub players: IndexMap<i32, Player>,
+    // state
+    pub global_state: GlobalState,
+    pub lobby_state: Option<(WebSocketProxy, LobbyState)>,
+    pub gameplay_state: Option<(WebSocketProxy, GameplayState)>,
 
     // features
     pub show_mobile_games: bool,
@@ -41,8 +42,28 @@ pub struct HaxState {
     pub strip_passwords: bool,
 }
 
-impl BulletForceHax {
-    pub fn get_state(&self) -> Arc<futures_util::lock::Mutex<HaxState>> {
-        self.state.clone()
-    }
+/// Game-related state that is kept over the lifetime of the program.
+#[derive(Default)]
+pub struct GlobalState {
+    pub user_id: Option<String>,
+    pub version: Option<VersionInfo>,
+}
+
+/// State for a given lobby connection
+#[derive(Default)]
+pub struct LobbyState {}
+
+/// State for a given game connection
+#[derive(Default)]
+pub struct GameplayState {
+    pub player_id: Option<i32>,
+    pub players: IndexMap<i32, Player>,
+}
+
+#[derive(Debug, Clone)]
+pub struct VersionInfo {
+    /// The version of the game.
+    pub game_version: String,
+    /// The version of Photon Unity Networking. This is not the version of the Photon .Net Client Library.
+    pub photon_version: String,
 }
