@@ -82,6 +82,7 @@ async fn real_main() -> anyhow::Result<()> {
                 .then_some("BulletForceHax")
                 .unwrap_or("Bullet Force"),
         )
+        .with_inner_size(wry::application::dpi::LogicalSize::new(800, 600))
         .with_menu(menu)
         .build(&event_loop)?;
 
