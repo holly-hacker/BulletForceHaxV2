@@ -38,8 +38,9 @@ impl BulletForceHax {
         state: Arc<Mutex<HaxState>>,
         mut new_connection_recv: Receiver<WebSocketProxy>,
     ) {
+        debug!("Received new websocket proxy to store in state variable");
         while let Some(mut conn) = new_connection_recv.recv().await {
-            match conn.get_server() {
+            match conn.get_server_type() {
                 // lobby
                 Some(WebSocketServer::LobbyServer) => {
                     let notify_closed = conn.take_notify_closed();

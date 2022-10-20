@@ -76,12 +76,11 @@ async fn real_main() -> anyhow::Result<()> {
 
     // create the window for the webview
     let window = WindowBuilder::new()
-        .with_title(
-            config
-                .hax
-                .then_some("BulletForceHax")
-                .unwrap_or("Bullet Force"),
-        )
+        .with_title(if config.hax {
+            "BulletForceHax"
+        } else {
+            "Bullet Force"
+        })
         .with_inner_size(wry::application::dpi::LogicalSize::new(800, 600))
         .with_menu(menu)
         .build(&event_loop)?;

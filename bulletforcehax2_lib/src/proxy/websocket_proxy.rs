@@ -1,15 +1,17 @@
+use std::convert::Infallible;
 use std::sync::Arc;
 use std::{net::SocketAddr, str::FromStr};
 
 use anyhow::{Context, Result};
 use futures_util::lock::Mutex;
 use futures_util::{Sink, SinkExt, Stream, StreamExt};
-use hyper::header::HeaderName;
-use hyper::http::{HeaderValue, Request};
-use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::{mpsc, oneshot, Notify};
-use tokio_tungstenite::tungstenite::{handshake::server::Callback, Message};
-use tracing::{debug, error, info, info_span, trace, Instrument};
+use hyper::http::Request;
+use hyper::{Body, Response, Server};
+use tokio::sync::{mpsc, Notify};
+use tokio_tungstenite::tungstenite::Message;
+use tower::{make::Shared, ServiceBuilder};
+use tower_http::{catch_panic::CatchPanicLayer, cors::CorsLayer};
+use tracing::{debug, error, info, info_span, trace, warn, Instrument};
 
 use super::{Direction, WebSocketServer};
 use crate::hax::HaxState;
@@ -43,7 +45,7 @@ impl WebSocketProxy {
         self.port
     }
 
-    pub fn get_server(&self) -> Option<WebSocketServer> {
+    pub fn get_server_type(&self) -> Option<WebSocketServer> {
         WebSocketServer::from_port(self.port)
     }
 
@@ -64,61 +66,64 @@ impl WebSocketProxy {
     }
 }
 
-/// Starts listening for client socket connections
 pub async fn block_on_server(
     new_connection_sender: mpsc::Sender<WebSocketProxy>,
     shared_state: Arc<Mutex<HaxState>>,
-) {
+) -> anyhow::Result<()> {
     let addr = SocketAddr::from(([127, 0, 0, 1], 48899));
 
-    let listener = TcpListener::bind(addr).await.unwrap();
-
-    while let Ok((stream, _socket_address)) = listener.accept().await {
-        let sender = new_connection_sender.clone();
-        let state = shared_state.clone();
-        tokio::spawn(async move {
-            let result = accept_connection(stream, state).await;
-            match result {
-                Ok(connection) => {
-                    info!(
-                        "new websocket connection accepted for target port {}",
-                        connection.port
-                    );
-                    if sender.send(connection).await.is_err() {
-                        error!("Tried to send websocket connection over channel but it failed");
-                    }
-                }
-                Err(e) => {
-                    error!("Error while accepting new websocket connection: {e}");
-                }
-            }
+    let state = shared_state.clone();
+    let service = ServiceBuilder::new()
+        .layer(CatchPanicLayer::new())
+        .layer(CorsLayer::permissive())
+        .service_fn(move |req| {
+            web_socket_proxy_service(req, state.clone(), new_connection_sender.clone())
         });
+
+    let server = Server::bind(&addr).serve(Shared::new(service));
+
+    debug!("http server created");
+    if let Err(e) = server.await {
+        // TODO: this should return an error instead!
+        error!("server error: {}", e);
+    }
+
+    Ok(())
+}
+
+#[tracing::instrument(name = "WebSocketProxy", level = "info", skip_all, fields(uri = req.uri().query().unwrap_or("")))]
+async fn web_socket_proxy_service(
+    req: Request<Body>,
+    state: Arc<Mutex<HaxState>>,
+    new_connection_sender: mpsc::Sender<WebSocketProxy>,
+) -> Result<Response<Body>, Infallible> {
+    debug!("Incoming websocket request");
+    match web_socket_proxy(req, state, new_connection_sender).await {
+        Ok(r) => Ok(r),
+        Err(e) => {
+            error!("Error result while handling proxied request {e:?}");
+            Ok(Response::builder()
+                .status(500)
+                .body(format!("Error while handling request: {e:?}").into())
+                .expect("should be able to create basic response"))
+        }
     }
 }
 
-async fn accept_connection(
-    stream: TcpStream,
+async fn web_socket_proxy(
+    mut incoming_request: Request<Body>,
     shared_state: Arc<Mutex<HaxState>>,
-) -> Result<WebSocketProxy> {
-    let addr = stream
-        .peer_addr()
-        .expect("connected streams should have a peer address");
-
-    let (tx_handshake, rx_handshake) = oneshot::channel();
-
-    let ws_stream = tokio_tungstenite::accept_hdr_async(
-        stream,
-        WebsocketHandshakeCallback { tx: tx_handshake },
-    )
-    .await
-    .with_context(|| "Error during the websocket handshake occurred")?;
-
-    // wait for the connection to be established and get the uri from the handshake request
-    let (socket_uri, headers_to_forward) = rx_handshake.await.unwrap();
-    trace!("Headers to add to server handshake: {headers_to_forward:?}");
+    new_connection_sender: mpsc::Sender<WebSocketProxy>,
+) -> anyhow::Result<Response<Body>> {
+    // Check if the request is a websocket upgrade request.
+    if !hyper_tungstenite::is_upgrade_request(&incoming_request) {
+        warn!("Received non-upgrade request in websocket handler");
+        return Ok(Response::new(Body::from("This is a websocket endpoint.")));
+    }
 
     let target_uri = {
-        let query_string = socket_uri
+        let query_string = incoming_request
+            .uri()
             .query()
             .ok_or_else(|| anyhow::anyhow!("WebSocket handshake had no query string"))?;
         hyper::Uri::from_str(query_string)
@@ -126,63 +131,111 @@ async fn accept_connection(
     };
     let target_port = target_uri.port_u16().unwrap_or(0);
 
-    info!("New WebSocket connection from {addr} for uri {target_uri}");
+    info!("New incoming WebSocket request for {target_uri}");
 
-    let (client_send, client_recv) = ws_stream.split();
+    let (mut outgoing_response, websocket) =
+        hyper_tungstenite::upgrade(&mut incoming_request, None)?;
 
     let (server_send, server_recv) = {
+        // headers to send back to the client
+        let response_headers = ["sec-websocket-protocol"];
+
+        // headers to forward to the server
+        let forwarded_headers = [
+            "sec-websocket-protocol",
+            "sec-websocket-key",
+            "sec-websocket-version",
+            "sec-websocket-extensions",
+        ];
+
         let mut request = Request::builder()
             .method("GET")
             .header("host", target_uri.host().unwrap())
             .header("connection", "Upgrade")
             .header("upgrade", "websocket")
             .uri(&target_uri);
-        for (header_name, header_value) in headers_to_forward {
-            request = request.header(header_name, header_value);
+        for header_name in forwarded_headers {
+            if let Some(header_value) = incoming_request.headers().get(header_name) {
+                request = request.header(header_name, header_value);
+            }
         }
         let request = request.body(()).unwrap();
-        let (ws_stream, _) = tokio_tungstenite::connect_async(request)
+        let (ws_stream, response) = tokio_tungstenite::connect_async(request)
             .await
             .with_context(|| "Failed to connect to server")?;
         debug!("WebSocket handshake has been successfully completed");
 
+        // copy response headers to outging response
+        for header_name in response_headers {
+            if let Some(header_value) = response.headers().get(header_name) {
+                outgoing_response
+                    .headers_mut()
+                    .insert(header_name, header_value.clone());
+            }
+        }
+
         ws_stream.split()
     };
 
-    let notify_closed = Arc::new(Notify::new());
+    // we need to make a new task so that we can immediately return the response. hyper-tungstenite
+    // wont resolve the `websocket` future.
+    tokio::spawn(async move {
+        debug!("Awaiting websocket");
+        let ws = match websocket.await {
+            Ok(ws) => ws,
+            Err(e) => {
+                error!("Failed to accept websocket connection: {e}");
+                return;
+            }
+        };
 
-    // these explicit type definitions are required because it tells the compiler to use `Box<impl SomeTrait>`
-    let client_send: SocketSink = Box::new(client_send);
-    let server_send: SocketSink = Box::new(server_send);
+        let (client_send, client_recv) = ws.split();
+        debug!("Created client streams");
 
-    let client_send = Arc::new(Mutex::new(client_send));
-    let server_send = Arc::new(Mutex::new(server_send));
+        let notify_closed = Arc::new(Notify::new());
 
-    let client_to_server = start_proxy_task(
-        Box::new(client_recv),
-        server_send.clone(),
-        target_port,
-        Direction::ClientToServer,
-        notify_closed.clone(),
-        shared_state.clone(),
-    );
-    let server_to_client = start_proxy_task(
-        Box::new(server_recv),
-        client_send.clone(),
-        target_port,
-        Direction::ServerToClient,
-        notify_closed.clone(),
-        shared_state.clone(),
-    );
+        // these explicit type definitions are required because it tells the compiler to use `Box<impl SomeTrait>`
+        let client_send: SocketSink = Box::new(client_send);
+        let server_send: SocketSink = Box::new(server_send);
 
-    Ok(WebSocketProxy {
-        client_send,
-        server_send,
-        client_to_server,
-        server_to_client,
-        port: target_uri.port().map(|p| p.as_u16()).unwrap_or(0),
-        notify_closed: Some(notify_closed),
-    })
+        let client_send = Arc::new(Mutex::new(client_send));
+        let server_send = Arc::new(Mutex::new(server_send));
+
+        let client_to_server = start_proxy_task(
+            Box::new(client_recv),
+            server_send.clone(),
+            target_port,
+            Direction::ClientToServer,
+            notify_closed.clone(),
+            shared_state.clone(),
+        );
+        let server_to_client = start_proxy_task(
+            Box::new(server_recv),
+            client_send.clone(),
+            target_port,
+            Direction::ServerToClient,
+            notify_closed.clone(),
+            shared_state.clone(),
+        );
+
+        debug!("Sending websocket proxy object over channel");
+        let send_result = new_connection_sender
+            .send(WebSocketProxy {
+                client_send,
+                server_send,
+                client_to_server,
+                server_to_client,
+                port: target_uri.port().map(|p| p.as_u16()).unwrap_or(0),
+                notify_closed: Some(notify_closed),
+            })
+            .await;
+
+        if let Err(e) = send_result {
+            error!("Failed to send new websocket proxy over channel: {e}");
+        };
+    });
+
+    Ok(outgoing_response)
 }
 
 fn start_proxy_task(
@@ -200,6 +253,8 @@ fn start_proxy_task(
     };
     tokio::spawn(
         async move {
+            debug!("Starting new proxy task");
+
             while let Some(message) = stream.next().await {
                 // TODO: don't unwrap. what can this error on?
                 let mut message = message.unwrap();
@@ -239,50 +294,4 @@ fn start_proxy_task(
         }
         .instrument(span),
     )
-}
-
-struct WebsocketHandshakeCallback {
-    tx: tokio::sync::oneshot::Sender<(hyper::Uri, Vec<(HeaderName, HeaderValue)>)>,
-}
-
-impl Callback for WebsocketHandshakeCallback {
-    fn on_request(
-        self,
-        request: &tokio_tungstenite::tungstenite::handshake::server::Request,
-        mut response: tokio_tungstenite::tungstenite::handshake::server::Response,
-    ) -> Result<
-        tokio_tungstenite::tungstenite::handshake::server::Response,
-        tokio_tungstenite::tungstenite::handshake::server::ErrorResponse,
-    > {
-        // headers to send back to the client
-        let response_headers = ["sec-websocket-protocol"];
-
-        // headers to forward to the server
-        let forwarded_headers = [
-            "sec-websocket-protocol",
-            "sec-websocket-key",
-            "sec-websocket-version",
-            "sec-websocket-extensions",
-        ];
-
-        let map = request
-            .headers()
-            .iter()
-            .filter(|(name, _)| forwarded_headers.into_iter().any(|h| *name == h))
-            .map(|(name, value)| (name.clone(), value.clone()))
-            .collect();
-
-        let uri = request.uri().clone();
-        self.tx.send((uri, map)).unwrap();
-
-        trace!("Websocket client headers: {:?}", request.headers());
-
-        for header in response_headers.into_iter() {
-            if let Some(header_value) = request.headers().get(header) {
-                // technically not correct because there can be multiple protocols
-                response.headers_mut().insert(header, header_value.clone());
-            }
-        }
-        Ok(response)
-    }
 }
