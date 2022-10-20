@@ -4,7 +4,7 @@
 pub mod highlevel;
 pub mod photon_data_type;
 pub mod photon_message;
-pub(crate) mod utils;
+pub mod utils;
 
 pub use indexmap;
 use indexmap::IndexMap;

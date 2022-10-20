@@ -1,6 +1,5 @@
-use crate::photon_data_type::PhotonDataType;
-
 use super::{structs::*, FromMapError, PhotonMapConversion};
+use crate::photon_data_type::PhotonDataType;
 
 const PHOTON_NETWORK_MAX_VIEW_IDS: i32 = 1000;
 

@@ -215,6 +215,7 @@ impl_photon_map_conversion! {
     }
 
     /// Describes a player. Most information wil be in [Player::custom_properties].
+    #[derive(Debug)]
     Player {
         // It's possible that this is always present, but I'm not 100% sure.
         /// The player's nickname.

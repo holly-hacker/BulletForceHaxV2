@@ -6,7 +6,12 @@ mod impl_websocket;
 
 use std::sync::Arc;
 
-use photon_lib::{highlevel::structs::Player, indexmap::IndexMap};
+use photon_lib::{
+    highlevel::structs::{InstantiationEventData, Player},
+    indexmap::IndexMap,
+    photon_data_type::PhotonDataType,
+};
+use tracing::{debug, warn};
 
 use crate::proxy::websocket_proxy::WebSocketProxy;
 
@@ -56,8 +61,62 @@ pub struct LobbyState {}
 /// State for a given game connection
 #[derive(Default)]
 pub struct GameplayState {
+    /// the player id
     pub player_id: Option<i32>,
-    pub players: IndexMap<i32, Player>,
+
+    /// our player's actor id
+    pub actor_nr: Option<i32>,
+
+    pub match_manager_view_id: Option<i32>,
+
+    /// The player actors currently in the game.
+    ///
+    /// Keyed by actor id.
+    pub players: IndexMap<i32, PlayerActor>,
+}
+
+#[derive(Default, Debug)]
+pub struct PlayerActor {
+    pub view_id: Option<i32>,
+    pub user_id: Option<String>,
+    pub nickname: Option<String>,
+    pub team_number: Option<u8>,
+}
+
+impl PlayerActor {
+    pub fn merge_player(&mut self, player: Player) {
+        debug!(
+            data = format!("{player:?}"),
+            "Merging player with actor info"
+        );
+        if let Some(user_id) = player.user_id {
+            self.user_id = Some(user_id);
+        }
+        if let Some(nickname) = player.nickname {
+            self.nickname = Some(nickname);
+        }
+
+        if let Some(PhotonDataType::Byte(team_number)) = player.custom_properties.get("teamNumber")
+        {
+            self.team_number = Some(*team_number);
+        }
+    }
+
+    pub fn merge_instantiation_data(&mut self, instantiation_data: &InstantiationEventData) {
+        if instantiation_data.prefab_name != "PlayerBody" {
+            warn!(
+                "Tried to merge {} into player, expected PlayerBody",
+                instantiation_data.prefab_name
+            );
+            return;
+        }
+        debug!(
+            data = format!("{instantiation_data:?}"),
+            "Merging player with instantiation data"
+        );
+
+        self.view_id = Some(instantiation_data.instantiation_id);
+    }
 }
 
 #[derive(Debug, Clone)]

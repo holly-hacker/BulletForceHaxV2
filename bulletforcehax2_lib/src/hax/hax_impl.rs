@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{ops::DerefMut, sync::Arc};
 
 use futures_util::lock::Mutex;
 use photon_lib::{
@@ -12,16 +12,16 @@ use photon_lib::{
     },
     photon_data_type::PhotonDataType,
     photon_message::PhotonMessage,
+    utils::PhotonDataTypeExtensions,
 };
 use tracing::{debug, trace, warn};
 
+use super::VersionInfo;
 use crate::{
-    hax::HaxState,
+    hax::{HaxState, PlayerActor},
     protocol::rpc::get_rpc_method_name,
     proxy::{Direction, WebSocketServer},
 };
-
-use super::VersionInfo;
 
 #[allow(dead_code)]
 enum WebSocketHookAction {
@@ -217,19 +217,45 @@ impl HaxState {
                         let _req = JoinGameRequest::from_map(props)?;
                         debug!(request = format!("_req:?"), "Game Join Request");
                     }
+
                     operation_code::RAISE_EVENT => {
                         let req = RaiseEvent::from_map(&mut operation_request.parameters)?;
+
+                        debug!(
+                            event_code = req.event_code,
+                            data = format!("{:?}", req.data),
+                            "Raise event"
+                        );
+
+                        let req_data = match req.data {
+                            Some(PhotonDataType::Hashtable(t)) => Some(t),
+                            _ => None,
+                        };
+
                         match req.event_code {
+                            pun_event_code::INSTANTIATION => {
+                                let mut req_data = match req_data {
+                                    Some(x) => x.to_parameter_map_lossy(),
+                                    None => anyhow::bail!("INSTANTIATION event without data"),
+                                };
+
+                                let mut event = InstantiationEvent::from_map(&mut req_data)?;
+                                let sender = event.sender_actor.unwrap_or(-1);
+                                let event_data = InstantiationEventData::from_map(&mut event.data)?;
+                                debug!(
+                                    data = format!("{event_data:?}"),
+                                    sender,
+                                    direction = "server",
+                                    "Instantiation"
+                                );
+
+                                let hax = futures::executor::block_on(hax.lock());
+                                merge_instantiation(hax, sender, &event_data)?;
+                            }
                             pun_event_code::RPC => {
                                 // client->server RPC call
-                                let event_data = req
-                                    .data
+                                let mut event_content = req_data
                                     .ok_or_else(|| anyhow::anyhow!("RPC call with no data"))?;
-
-                                let mut event_content = match event_data {
-                                    PhotonDataType::Hashtable(h) => h,
-                                    _ => anyhow::bail!("Expected hashtable args for RPC call"),
-                                };
 
                                 let data = RpcCall::from_map(&mut event_content)?;
 
@@ -281,32 +307,64 @@ impl HaxState {
                                 PhotonDataType::Hashtable(actor_props) => actor_props,
                                 _ => continue,
                             };
-                            let actor_info = Player::from_map(&mut actor_props.clone())?;
+
+                            let mut actor = PlayerActor::default();
+
+                            let player = Player::from_map(&mut actor_props.clone())?;
+                            actor.merge_player(player);
 
                             debug!(actor_id, "Found new actor");
-                            state.players.insert(actor_id, actor_info);
+                            state.players.insert(actor_id, actor);
                         }
+
+                        tracing::info!(
+                            players = format!("{:?}", state.players),
+                            "Player info after join"
+                        );
                     }
                     _ => (),
                 }
             }
             PhotonMessage::EventData(mut event) => match event.code {
                 event_code::JOIN => {
-                    let props = event.parameters.get_mut(&parameter_code::PLAYER_PROPERTIES);
+                    let mut hax = futures::executor::block_on(hax.lock());
+                    let (_, state) = match &mut hax.gameplay_state {
+                        Some(x) => x,
+                        _ => anyhow::bail!("gameplay state is None"),
+                    };
 
-                    if let Some(PhotonDataType::Hashtable(props)) = props {
-                        let player = Player::from_map(props)?;
-
-                        debug!(
-                            "Received player info for {:?} (id {:?})",
-                            player.nickname, player.user_id
-                        );
+                    let actor_nr = event.parameters.get_mut(&parameter_code::ACTOR_NR);
+                    if let Some(PhotonDataType::Integer(actor_nr)) = actor_nr {
+                        state.actor_nr = Some(*actor_nr);
                     }
+
+                    let actor_list = event.parameters.get_mut(&parameter_code::ACTOR_LIST);
+                    if let Some(PhotonDataType::Array(array)) = actor_list {
+                        for id in array {
+                            if let PhotonDataType::Integer(id) = id {
+                                state
+                                    .players
+                                    .entry(*id)
+                                    .or_insert_with(PlayerActor::default);
+                            }
+                        }
+                    }
+
+                    // PLAYER_PROPERTIES field is pretty useless, only contains empty string as nickname
                 }
                 pun_event_code::INSTANTIATION => {
                     let mut event = InstantiationEvent::from_map(&mut event.parameters)?;
+                    let sender = event.sender_actor.unwrap_or(-1);
                     let event_data = InstantiationEventData::from_map(&mut event.data)?;
-                    debug!(data = format!("{event_data:?}"), "Instantiation");
+                    debug!(
+                        data = format!("{event_data:?}"),
+                        sender,
+                        direction = "client",
+                        "Instantiation"
+                    );
+
+                    let hax = futures::executor::block_on(hax.lock());
+                    merge_instantiation(hax, sender, &event_data)?;
                 }
                 pun_event_code::SEND_SERIALIZE | pun_event_code::SEND_SERIALIZE_RELIABLE => {
                     let event = SendSerializeEvent::from_map(&mut event.parameters)?;
@@ -353,6 +411,30 @@ impl HaxState {
 
         Ok(WebSocketHookAction::DoNothing)
     }
+}
+
+fn merge_instantiation(
+    mut hax: impl DerefMut<Target = HaxState>,
+    sender: i32,
+    event_data: &InstantiationEventData,
+) -> anyhow::Result<()> {
+    let (_, state) = match &mut hax.gameplay_state {
+        Some(x) => x,
+        _ => anyhow::bail!("gameplay state is None"),
+    };
+
+    match event_data.prefab_name.as_ref() {
+        "PlayerBody" => {
+            let x = state.players.entry(sender).or_default();
+            x.merge_instantiation_data(event_data);
+        }
+        "Match Manager" => {
+            state.match_manager_view_id = Some(event_data.instantiation_id);
+        }
+        n => debug!(name = n, "Unknown prefab name in instantiation packet"),
+    }
+
+    Ok(())
 }
 
 fn strip_password(room_info: &mut RoomInfo) {

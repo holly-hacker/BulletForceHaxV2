@@ -73,36 +73,45 @@ impl BulletForceHaxMenu {
 
             if let Some((_, state)) = &hax.gameplay_state {
                 ui.heading("Info - Players");
-                {
-                    TableBuilder::new(ui)
-                        .striped(true)
-                        .column(Size::initial(45.0))
-                        .column(Size::remainder())
-                        .resizable(true)
-                        .header(20.0, |mut header| {
-                            header.col(|ui| {
-                                ui.label(RichText::new("ActorId").strong());
-                            });
-                            header.col(|ui| {
-                                ui.label(RichText::new("Name").strong());
-                            });
-                        })
-                        .body(|mut body| {
-                            for (actor_id, player) in &state.players {
-                                body.row(18.0, |mut row| {
-                                    row.col(|ui| {
-                                        ui.label(actor_id.to_string());
-                                    });
-                                    row.col(|ui| {
-                                        ui.label(match &player.nickname {
-                                            Some(x) => x.as_str(),
-                                            None => "",
-                                        });
+                TableBuilder::new(ui)
+                    .striped(true)
+                    .column(Size::initial(45.0))
+                    .column(Size::remainder())
+                    .column(Size::initial(45.0).at_least(60.0))
+                    .resizable(true)
+                    .header(20.0, |mut header| {
+                        header.col(|ui| {
+                            ui.label(RichText::new("ActorId").strong());
+                        });
+                        header.col(|ui| {
+                            ui.label(RichText::new("Name").strong());
+                        });
+                        header.col(|ui| {
+                            ui.label(RichText::new("Team").strong());
+                        });
+                    })
+                    .body(|mut body| {
+                        for (actor_id, player) in &state.players {
+                            body.row(18.0, |mut row| {
+                                row.col(|ui| {
+                                    ui.label(actor_id.to_string());
+                                });
+                                row.col(|ui| {
+                                    ui.label(match &player.nickname {
+                                        Some(x) => x.as_str(),
+                                        None => "",
                                     });
                                 });
-                            }
-                        });
-                }
+                                row.col(|ui| {
+                                    ui.label(match &player.team_number {
+                                        Some(x) => x.to_string(),
+                                        None => "Unknown".to_string(),
+                                    });
+                                });
+                            });
+                        }
+                    });
+
                 ui.add_space(16f32);
             }
 
