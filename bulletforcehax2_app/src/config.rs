@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 // NOTE: these values are copied to the `serde(rename)` attributes in PartialConfig
 const ARG_CONFIG_FILE: &str = "config";
+const ARG_PORT: &str = "port";
 const ARG_PROFILE_DIR: &str = "browser-profile";
 const ARG_GAME_DIR: &str = "game-files";
 const ARG_LOG_DIR: &str = "logs";
@@ -12,6 +13,7 @@ const ARG_OPEN_DEVTOOLS: &str = "open-devtools";
 const ARG_HAX: &str = "hax";
 
 const DEFAULT_CONFIG_FILE: &str = "config.toml";
+const DEFAULT_PORT: u16 = 48897;
 const DEFAULT_PROFILE_DIR: &str = "bfhax_data/browser_profile";
 const DEFAULT_GAME_DIR: &str = "bfhax_data/game_files";
 const DEFAULT_LOG_DIR: &str = "bfhax_data/logs";
@@ -21,6 +23,7 @@ const DEFAULT_HAX: bool = false;
 #[derive(Debug, Clone, Serialize)]
 pub struct Config {
     pub config_file: PathBuf,
+    pub port: u16,
     pub profile_dir: PathBuf,
     pub game_dir: PathBuf,
     pub log_dir: PathBuf,
@@ -32,6 +35,8 @@ pub struct Config {
 pub struct PartialConfig {
     #[serde(skip)]
     pub config_file: Option<PathBuf>,
+    #[serde(rename = "port")]
+    pub port: Option<u16>,
     #[serde(rename = "browser-profile")]
     pub profile_dir: Option<PathBuf>,
     #[serde(rename = "game-files")]
@@ -48,6 +53,7 @@ impl Config {
     fn overwrite_with(self, new: PartialConfig) -> Config {
         Self {
             config_file: new.config_file.unwrap_or(self.config_file),
+            port: new.port.unwrap_or(self.port),
             profile_dir: new.profile_dir.unwrap_or(self.profile_dir),
             game_dir: new.game_dir.unwrap_or(self.game_dir),
             log_dir: new.log_dir.unwrap_or(self.log_dir),
@@ -61,6 +67,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             config_file: PathBuf::from(DEFAULT_CONFIG_FILE),
+            port: DEFAULT_PORT,
             profile_dir: PathBuf::from(DEFAULT_PROFILE_DIR),
             game_dir: PathBuf::from(DEFAULT_GAME_DIR),
             log_dir: PathBuf::from(DEFAULT_LOG_DIR),
@@ -74,6 +81,7 @@ impl From<ArgMatches> for PartialConfig {
     fn from(matches: ArgMatches) -> Self {
         Self {
             config_file: matches.get_one::<PathBuf>(ARG_CONFIG_FILE).cloned(),
+            port: matches.get_one::<u16>(ARG_PORT).cloned(),
             profile_dir: matches.get_one::<PathBuf>(ARG_PROFILE_DIR).cloned(),
             game_dir: matches.get_one::<PathBuf>(ARG_GAME_DIR).cloned(),
             log_dir: matches.get_one::<PathBuf>(ARG_LOG_DIR).cloned(),
@@ -117,6 +125,14 @@ fn build_command() -> Command {
                 .help(format!("Specifies which config file should be read. [default: {DEFAULT_CONFIG_FILE}]"))
                 .required(false)
                 .value_parser(value_parser!(PathBuf)),
+        )
+        .arg(
+            Arg::new(ARG_PORT)
+                .long(ARG_PORT)
+                .value_name("PORT")
+                .help(format!("Specifies the port to run the web server on. [default: {DEFAULT_PORT}]"))
+                .required(false)
+                .value_parser(value_parser!(u16)),
         )
         .arg(
             Arg::new(ARG_HAX)

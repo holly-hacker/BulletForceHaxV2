@@ -64,7 +64,7 @@ async fn real_main() -> anyhow::Result<()> {
     };
 
     let web_server = WebServer::new(
-        48897,
+        config.port,
         hax_web_services,
         asset_server::create_service(version_info, config.clone()),
     );
@@ -107,7 +107,7 @@ async fn real_main() -> anyhow::Result<()> {
     let webview = WebViewBuilder::new(window)?
         .with_web_context(&mut WebContext::new(Some(webview_profile_path)))
         .with_devtools(true)
-        .with_url("http://localhost:48897/")?
+        .with_url(&format!("http://localhost:{}/", config.port))?
         .build()?;
 
     if config.open_devtools {
