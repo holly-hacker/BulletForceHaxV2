@@ -52,7 +52,7 @@
                 let orig_socketCreate = env["_SocketCreate"];
                 env["_SocketCreate"] = function (url, protocols) {
                     // NOTE: I can pass the protocol to the proxy as well, that may be useful in the future
-                    url = str_to_ptr("ws://localhost:48899/?" + ptr_to_str(url));
+                    url = str_to_ptr("ws://localhost:48897/socket?" + ptr_to_str(url));
                     let ret = orig_socketCreate(url, protocols);
                     console.log("_SocketCreate", ptr_to_str(url), ptr_to_str(protocols), ret);
                     return ret;
@@ -60,7 +60,7 @@
 
                 let orig_webRequestCreate = env["_JS_WebRequest_Create"];
                 env["_JS_WebRequest_Create"] = function (url, method) {
-                    url = str_to_ptr("http://localhost:48898/?" + ptr_to_str(url));
+                    url = str_to_ptr("http://localhost:48897/request?" + ptr_to_str(url));
                     let ret = orig_webRequestCreate(url, method);
                     console.log("_JS_WebRequest_Create", ptr_to_str(url), ptr_to_str(method), ret);
                     return ret;

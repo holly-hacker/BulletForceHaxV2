@@ -1,7 +1,9 @@
-use std::sync::Arc;
+use std::{convert::Infallible, sync::Arc};
 
 use futures_util::lock::Mutex;
+use hyper::{Body, Request, Response};
 use tokio::sync::mpsc::Receiver;
+use tower::util::BoxCloneService;
 use tracing::{debug, info, warn};
 
 use super::{BulletForceHax, HaxState};
@@ -11,26 +13,23 @@ use crate::{
 };
 
 impl BulletForceHax {
-    /// Creates the websocket proxy handler thread. Panics if one has already been created.
-    pub fn start_websocket_proxy(&mut self) {
-        if self.websocket_proxy.is_some() {
-            panic!("websocket proxy is already enabled");
-        }
+    pub fn get_webrequest_proxy(
+        &mut self,
+    ) -> BoxCloneService<Request<Body>, Response<Body>, Infallible> {
+        crate::proxy::webrequest_proxy::create_service(self.state.clone())
+    }
 
+    pub fn get_websocket_proxy(
+        &mut self,
+    ) -> BoxCloneService<Request<Body>, Response<Body>, Infallible> {
         let (new_connection_send, new_connection_recv) = tokio::sync::mpsc::channel(4);
-
-        let state = self.state.clone();
-        tokio::spawn(async move {
-            // start the proxy
-            crate::proxy::websocket_proxy::block_on_server(new_connection_send, state).await
-        });
 
         let state = self.state.clone();
         tokio::spawn(async move {
             Self::store_new_connections_in_state_vars(state, new_connection_recv).await;
         });
 
-        self.websocket_proxy = Some(());
+        crate::proxy::websocket_proxy::create_service(new_connection_send, self.state.clone())
     }
 
     // bookkeeping to ensure the websocket connection gets written and unwritten to the right variable

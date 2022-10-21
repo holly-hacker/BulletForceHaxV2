@@ -1,5 +1,4 @@
 use std::convert::Infallible;
-use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -7,35 +6,23 @@ use anyhow::Result;
 use futures_util::lock::Mutex;
 use hyper::body::to_bytes;
 use hyper::header::CONTENT_TYPE;
-use hyper::{Body, Client, Request, Response, Server};
-use tower::make::Shared;
+use hyper::{Body, Client, Request, Response};
+use tower::util::BoxCloneService;
 use tower::{Service, ServiceBuilder, ServiceExt};
-use tower_http::catch_panic::CatchPanicLayer;
-use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 use tower_http::decompression::DecompressionLayer;
 use tracing::{debug, error, trace, warn};
 
 use crate::hax::HaxState;
 
-pub async fn block_on_server(shared_state: Arc<Mutex<HaxState>>) {
-    let addr = SocketAddr::from(([127, 0, 0, 1], 48898));
-
-    let state = shared_state.clone();
+pub fn create_service(
+    shared_state: Arc<Mutex<HaxState>>,
+) -> BoxCloneService<Request<Body>, Response<Body>, Infallible> {
     let service = ServiceBuilder::new()
-        .layer(CatchPanicLayer::new())
-        .layer(CompressionLayer::new())
         .layer(CorsLayer::permissive())
-        // .service_fn(web_request_proxy_service)
-        .service_fn(move |req| web_request_proxy_service(req, state.clone()));
+        .service_fn(move |req| web_request_proxy_service(req, shared_state.clone()));
 
-    let server = Server::bind(&addr).serve(Shared::new(service));
-
-    debug!("http server created");
-    if let Err(e) = server.await {
-        // TODO: this should return an error instead!
-        error!("server error: {}", e);
-    }
+    BoxCloneService::new(service)
 }
 
 #[tracing::instrument(name = "WebRequestProxy", level = "info", skip_all, fields(uri = req.uri().query().unwrap_or("")))]

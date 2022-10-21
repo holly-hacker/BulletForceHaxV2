@@ -6,6 +6,7 @@
 mod asset_server;
 mod config;
 mod version_manager;
+mod web_server;
 
 use bulletforcehax2_lib::hax::BulletForceHax;
 use bulletforcehax2_ui::BulletForceHaxMenu;
@@ -21,6 +22,8 @@ use wry::{
     },
     webview::{WebContext, WebViewBuilder},
 };
+
+use crate::web_server::WebServer;
 
 #[tokio::main]
 async fn main() {
@@ -49,15 +52,24 @@ async fn real_main() -> anyhow::Result<()> {
     };
     info!("Initialized game version");
 
-    asset_server::start_asset_server(version_info, config.clone(), 48897).await;
-    info!("Initialized asset server");
-
     let mut hax = BulletForceHax::default();
-    if config.hax {
-        hax.start_webrequest_proxy();
-        hax.start_websocket_proxy();
-        info!("Initialized hax");
-    }
+    let hax_web_services = if config.hax {
+        info!("Initializing hax");
+        vec![
+            ("/request", hax.get_webrequest_proxy()),
+            ("/socket", hax.get_websocket_proxy()),
+        ]
+    } else {
+        vec![]
+    };
+
+    let web_server = WebServer::new(
+        48897,
+        hax_web_services,
+        asset_server::create_service(version_info, config.clone()),
+    );
+
+    web_server.start_server();
 
     // create menu structure
     let mut file_submenu = MenuBar::new();

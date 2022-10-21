@@ -1,38 +1,46 @@
+use std::convert::Infallible;
 use std::sync::Arc;
-use std::{convert::Infallible, net::SocketAddr};
 
 use anyhow::Context;
 use http::response::Builder as ResponseBuilder;
 use hyper::http;
-use hyper::service::{make_service_fn, service_fn};
-use hyper::{Body, Request, Response, Server};
+use hyper::{Body, Request, Response};
+use tower::util::BoxCloneService;
+use tower::ServiceBuilder;
 use tracing::{debug, error};
 
 use crate::config::Config;
 use crate::version_manager::VersionConfig;
 
-pub async fn start_asset_server(version: VersionConfig, config: Config, port: u16) {
-    tokio::spawn(async move { block_on_server(version, config, port).await });
-}
-
-async fn block_on_server(version: VersionConfig, config: Config, port: u16) {
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
-
+pub fn create_service(
+    version: VersionConfig,
+    config: Config,
+) -> BoxCloneService<Request<Body>, Response<Body>, Infallible> {
     let arc = Arc::new((version, config));
 
-    let server = Server::bind(&addr).serve(make_service_fn(move |_conn| {
-        let arc = arc.clone();
-        async move { Ok::<_, Infallible>(service_fn(move |req| handler(req, arc.clone()))) }
-    }));
+    let service = ServiceBuilder::new().service_fn(move |req| handler(req, arc.clone()));
 
-    debug!("asset http server created");
-    if let Err(e) = server.await {
-        error!("server error: {}", e);
-    }
+    BoxCloneService::new(service)
 }
 
 #[tracing::instrument(name = "AssetServer", level = "info", skip_all, fields(uri = request.uri().path()))]
 async fn handler(
+    request: Request<Body>,
+    arc: Arc<(VersionConfig, Config)>,
+) -> Result<Response<Body>, Infallible> {
+    match handler_main(request, arc).await {
+        Ok(r) => Ok(r),
+        Err(e) => {
+            error!("Error result while handling asset request {e:?}");
+            Ok(Response::builder()
+                .status(500)
+                .body(format!("Error while handling request: {e:?}").into())
+                .expect("should be able to create basic response"))
+        }
+    }
+}
+
+async fn handler_main(
     request: Request<Body>,
     arc: Arc<(VersionConfig, Config)>,
 ) -> anyhow::Result<Response<Body>> {

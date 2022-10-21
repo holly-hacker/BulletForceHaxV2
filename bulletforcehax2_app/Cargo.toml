@@ -26,6 +26,8 @@ time = { version = "0.3", features = ["local-offset"] }
 hyper = { version = "0.14", features = ["server", "http1", "runtime"] } # only what we need for the asset server
 clap = { version = "4", features = ["cargo"] }
 toml = "0.5"
+tower = { version = "0.4", features = ["make", "util", "steer"] }
+tower-http = { version = "0.3", features = ["catch-panic", "cors", "compression-gzip", "decompression-gzip"] }
 
 # eframe is only used for the download dialog, because it runs before the webview event loop
 eframe = { package = "eframe_tao", version = "0.20" }

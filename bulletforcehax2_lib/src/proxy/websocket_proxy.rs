@@ -1,16 +1,17 @@
 use std::convert::Infallible;
+use std::str::FromStr;
 use std::sync::Arc;
-use std::{net::SocketAddr, str::FromStr};
 
 use anyhow::{Context, Result};
 use futures_util::lock::Mutex;
 use futures_util::{Sink, SinkExt, Stream, StreamExt};
 use hyper::http::Request;
-use hyper::{Body, Response, Server};
+use hyper::{Body, Response};
 use tokio::sync::{mpsc, Notify};
 use tokio_tungstenite::tungstenite::Message;
-use tower::{make::Shared, ServiceBuilder};
-use tower_http::{catch_panic::CatchPanicLayer, cors::CorsLayer};
+use tower::util::BoxCloneService;
+use tower::ServiceBuilder;
+use tower_http::cors::CorsLayer;
 use tracing::{debug, error, info, info_span, trace, warn, Instrument};
 
 use super::{Direction, WebSocketServer};
@@ -66,33 +67,21 @@ impl WebSocketProxy {
     }
 }
 
-pub async fn block_on_server(
+pub fn create_service(
     new_connection_sender: mpsc::Sender<WebSocketProxy>,
     shared_state: Arc<Mutex<HaxState>>,
-) -> anyhow::Result<()> {
-    let addr = SocketAddr::from(([127, 0, 0, 1], 48899));
-
-    let state = shared_state.clone();
+) -> BoxCloneService<Request<Body>, Response<Body>, Infallible> {
     let service = ServiceBuilder::new()
-        .layer(CatchPanicLayer::new())
         .layer(CorsLayer::permissive())
         .service_fn(move |req| {
-            web_socket_proxy_service(req, state.clone(), new_connection_sender.clone())
+            web_socket_proxy_service(req, shared_state.clone(), new_connection_sender.clone())
         });
 
-    let server = Server::bind(&addr).serve(Shared::new(service));
-
-    debug!("http server created");
-    if let Err(e) = server.await {
-        // TODO: this should return an error instead!
-        error!("server error: {}", e);
-    }
-
-    Ok(())
+    BoxCloneService::new(service)
 }
 
 #[tracing::instrument(name = "WebSocketProxy", level = "info", skip_all, fields(uri = req.uri().query().unwrap_or("")))]
-async fn web_socket_proxy_service(
+pub async fn web_socket_proxy_service(
     req: Request<Body>,
     state: Arc<Mutex<HaxState>>,
     new_connection_sender: mpsc::Sender<WebSocketProxy>,
