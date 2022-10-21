@@ -84,7 +84,6 @@ dependencies = [
  "tokio",
  "toml",
  "tower",
- "tower-http",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
@@ -3099,7 +3098,6 @@ dependencies = [
  "tokio-util",
  "tower-layer",
  "tower-service",
- "tracing",
 ]
 
 [[package]]

@@ -61,7 +61,6 @@ pub fn start_download_thread() -> Result<Receiver<ProgressReport>> {
 }
 
 async fn do_download(tx: Sender<ProgressReport>) -> Result<()> {
-    // TODO: add tower-http's compressing middleware
     let client = Client::builder().build::<_, hyper::Body>(hyper_tls::HttpsConnector::new());
     let mut client = ServiceBuilder::new()
         .layer(DecompressionLayer::new())
