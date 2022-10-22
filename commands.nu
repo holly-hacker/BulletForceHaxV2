@@ -19,3 +19,8 @@ def bfh_latest_log_file [] {
     let file_name = (ls bfhax_data\logs\ | sort-by modified --reverse | first | get name)
     open --raw $file_name | from json --objects
 }
+
+# Opens the all debug log files as json. This can be very slow!
+def bfh_all_log_files [] {
+    ls bfhax_data\logs\ | sort-by modified --reverse | get name | each {|it| open --raw $it | from json --objects } | flatten
+}
