@@ -4,6 +4,7 @@
 pub mod highlevel;
 pub mod photon_data_type;
 pub mod photon_message;
+pub mod primitives;
 pub mod utils;
 
 pub use indexmap;
@@ -44,6 +45,8 @@ pub enum ReadError {
     UnknownDataType(u8),
     #[error("the following functionality is not yet implemented: {0}")]
     Unimplemented(&'static str),
+    #[error("invalid length for custom data {0}, expected {1} but found {2}")]
+    CustomDataInvalidLength(&'static str, usize, usize),
 }
 
 /// An error that can occur when writing a message

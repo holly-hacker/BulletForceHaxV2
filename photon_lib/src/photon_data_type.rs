@@ -14,6 +14,7 @@ use ordered_float::OrderedFloat;
 use crate::{
     check_remaining,
     photon_message::{EventData, OperationRequest, OperationResponse},
+    primitives::*,
     PhotonHashmap, ReadError, WriteError,
 };
 
@@ -436,12 +437,47 @@ impl PhotonDataType {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CustomData {
+    Vector2(Vector2),
+    Vector3(Vector3),
+    Quaternion(Quaternion),
+    PhotonPlayer(i32),
     Unrecognized(u8, Vec<u8>),
 }
 
 impl CustomData {
     pub fn to_bytes(&self, buf: &mut impl BufMut) -> Result<(), WriteError> {
         match self {
+            CustomData::Vector2(Vector2(OrderedFloat(x), OrderedFloat(y))) => {
+                buf.put_u8(b'W');
+                buf.put_i16(8);
+                buf.put_f32(*x);
+                buf.put_f32(*y);
+            }
+            CustomData::Vector3(Vector3(OrderedFloat(x), OrderedFloat(y), OrderedFloat(z))) => {
+                buf.put_u8(b'V');
+                buf.put_i16(12);
+                buf.put_f32(*x);
+                buf.put_f32(*y);
+                buf.put_f32(*z);
+            }
+            CustomData::Quaternion(Quaternion(
+                OrderedFloat(w),
+                OrderedFloat(x),
+                OrderedFloat(y),
+                OrderedFloat(z),
+            )) => {
+                buf.put_u8(b'Q');
+                buf.put_i16(16);
+                buf.put_f32(*w);
+                buf.put_f32(*x);
+                buf.put_f32(*y);
+                buf.put_f32(*z);
+            }
+            CustomData::PhotonPlayer(i) => {
+                buf.put_u8(b'P');
+                buf.put_i16(4);
+                buf.put_i32(*i);
+            }
             CustomData::Unrecognized(type_code, v) => {
                 buf.put_u8(*type_code);
 
@@ -460,18 +496,56 @@ impl CustomData {
         check_remaining!(bytes, 3);
         let type_code = bytes.get_u8();
 
-        #[allow(clippy::match_single_binding)]
+        let len = bytes.get_i16();
+        if len < 0 {
+            return Err(ReadError::UnexpectedData("negative length for custom data"));
+        }
+        let len = len as usize;
+
+        check_remaining!(bytes, len);
+
         match type_code {
-            _ => {
-                let len = bytes.get_i16();
-                if len < 0 {
-                    Err(ReadError::UnexpectedData("negative length for custom data"))
-                } else {
-                    check_remaining!(bytes, len as usize);
-                    let mut v = vec![0u8; len as usize];
-                    bytes.copy_to_slice(&mut v);
-                    Ok(CustomData::Unrecognized(type_code, v))
+            b'W' => {
+                if len != 8 {
+                    return Err(ReadError::CustomDataInvalidLength("Vector2", 8, len));
                 }
+                Ok(CustomData::Vector2(Vector2(
+                    OrderedFloat(bytes.get_f32()),
+                    OrderedFloat(bytes.get_f32()),
+                )))
+            }
+            b'V' => {
+                if len != 12 {
+                    return Err(ReadError::CustomDataInvalidLength("Vector3", 12, len));
+                }
+                Ok(CustomData::Vector3(Vector3(
+                    OrderedFloat(bytes.get_f32()),
+                    OrderedFloat(bytes.get_f32()),
+                    OrderedFloat(bytes.get_f32()),
+                )))
+            }
+            b'Q' => {
+                if len != 16 {
+                    return Err(ReadError::CustomDataInvalidLength("Quaternion", 16, len));
+                }
+                Ok(CustomData::Quaternion(Quaternion(
+                    OrderedFloat(bytes.get_f32()),
+                    OrderedFloat(bytes.get_f32()),
+                    OrderedFloat(bytes.get_f32()),
+                    OrderedFloat(bytes.get_f32()),
+                )))
+            }
+            b'P' => {
+                if len != 4 {
+                    return Err(ReadError::CustomDataInvalidLength("PhotonPlayer", 4, len));
+                }
+                Ok(CustomData::PhotonPlayer(bytes.get_i32()))
+            }
+            _ => {
+                check_remaining!(bytes, len as usize);
+                let mut v = vec![0u8; len as usize];
+                bytes.copy_to_slice(&mut v);
+                Ok(CustomData::Unrecognized(type_code, v))
             }
         }
     }

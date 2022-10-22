@@ -78,6 +78,7 @@ impl BulletForceHaxMenu {
                     .column(Size::initial(45.0))
                     .column(Size::initial(60.0))
                     .column(Size::initial(100.0))
+                    .column(Size::initial(150.0))
                     .column(Size::remainder())
                     .resizable(true)
                     .header(20.0, |mut header| {
@@ -91,6 +92,9 @@ impl BulletForceHaxMenu {
                             ui.label(RichText::new("Health").strong());
                         });
                         header.col(|ui| {
+                            ui.label(RichText::new("Position").strong());
+                        });
+                        header.col(|ui| {
                             ui.label(RichText::new("Name").strong());
                         });
                     })
@@ -101,15 +105,19 @@ impl BulletForceHaxMenu {
                                     ui.label(actor_id.to_string());
                                 });
                                 row.col(|ui| {
-                                    ui.label(match &player.team_number {
-                                        Some(x) => x.to_string(),
-                                        None => "Unknown".to_string(),
-                                    });
+                                    if let Some(x) = &player.team_number {
+                                        ui.label(x.to_string());
+                                    };
                                 });
                                 row.col(|ui| {
                                     if let Some(h) = &player.health {
                                         ui.add(ProgressBar::new(h / 100.0).show_percentage());
                                     }
+                                });
+                                row.col(|ui| {
+                                    if let Some(x) = &player.position {
+                                        ui.label(format!("{:?}", x.floats()));
+                                    };
                                 });
                                 row.col(|ui| {
                                     ui.label(match &player.nickname {

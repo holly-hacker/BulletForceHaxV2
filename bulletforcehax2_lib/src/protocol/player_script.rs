@@ -1,4 +1,7 @@
-use photon_lib::photon_data_type::{CustomData, PhotonDataType};
+use photon_lib::{
+    photon_data_type::{CustomData, PhotonDataType},
+    primitives::{Quaternion, Vector3},
+};
 
 #[derive(Debug)]
 pub struct PlayerScript {
@@ -29,8 +32,8 @@ pub struct PlayerScript {
     /// The id of the person that last damaged this player.
     pub last_damager_id: i32,
 
-    pub unknown_1: CustomData,
-    pub unknown_2: CustomData,
+    pub position: Vector3,
+    pub rotation: Quaternion,
 }
 
 impl PlayerScript {
@@ -112,13 +115,13 @@ impl PlayerScript {
                 Some(PhotonDataType::Integer(x)) => *x,
                 _ => anyhow::bail!("Expected type Integer in PlayerScript position 18"),
             },
-            unknown_1: match objects.get(19) {
-                Some(PhotonDataType::Custom(x)) => x.clone(),
-                _ => anyhow::bail!("Expected type Custom in PlayerScript position 19"),
+            position: match objects.get(19) {
+                Some(PhotonDataType::Custom(CustomData::Vector3(x))) => x.clone(),
+                _ => anyhow::bail!("Expected type Vector3 in PlayerScript position 19"),
             },
-            unknown_2: match objects.get(20) {
-                Some(PhotonDataType::Custom(x)) => x.clone(),
-                _ => anyhow::bail!("Expected type Custom in PlayerScript position 20"),
+            rotation: match objects.get(20) {
+                Some(PhotonDataType::Custom(CustomData::Quaternion(x))) => x.clone(),
+                _ => anyhow::bail!("Expected type Quaternion in PlayerScript position 20"),
             },
         })
     }

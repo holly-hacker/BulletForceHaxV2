@@ -9,6 +9,7 @@ use photon_lib::{
     highlevel::structs::{InstantiationEventData, Player, ViewId},
     indexmap::IndexMap,
     photon_data_type::PhotonDataType,
+    primitives::Vector3,
 };
 use tracing::{trace, warn};
 
@@ -76,6 +77,7 @@ pub struct PlayerActor {
     pub team_number: Option<u8>,
 
     pub health: Option<f32>,
+    pub position: Option<Vector3>,
 }
 
 impl PlayerActor {
@@ -120,6 +122,7 @@ impl PlayerActor {
         );
 
         self.health = Some(script.health as f32 / 100.0);
+        self.position = Some(script.position.clone());
     }
 }
 
