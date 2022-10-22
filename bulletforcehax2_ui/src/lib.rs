@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use bulletforcehax2_lib::hax::HaxState;
-use egui::RichText;
+use egui::{ProgressBar, RichText};
 use egui_extras::{Size, TableBuilder};
 use futures_util::lock::Mutex;
 
@@ -76,18 +76,22 @@ impl BulletForceHaxMenu {
                 TableBuilder::new(ui)
                     .striped(true)
                     .column(Size::initial(45.0))
+                    .column(Size::initial(60.0))
+                    .column(Size::initial(100.0))
                     .column(Size::remainder())
-                    .column(Size::initial(45.0).at_least(60.0))
                     .resizable(true)
                     .header(20.0, |mut header| {
                         header.col(|ui| {
                             ui.label(RichText::new("ActorId").strong());
                         });
                         header.col(|ui| {
-                            ui.label(RichText::new("Name").strong());
+                            ui.label(RichText::new("Team").strong());
                         });
                         header.col(|ui| {
-                            ui.label(RichText::new("Team").strong());
+                            ui.label(RichText::new("Health").strong());
+                        });
+                        header.col(|ui| {
+                            ui.label(RichText::new("Name").strong());
                         });
                     })
                     .body(|mut body| {
@@ -97,15 +101,20 @@ impl BulletForceHaxMenu {
                                     ui.label(actor_id.to_string());
                                 });
                                 row.col(|ui| {
-                                    ui.label(match &player.nickname {
-                                        Some(x) => x.as_str(),
-                                        None => "",
-                                    });
-                                });
-                                row.col(|ui| {
                                     ui.label(match &player.team_number {
                                         Some(x) => x.to_string(),
                                         None => "Unknown".to_string(),
+                                    });
+                                });
+                                row.col(|ui| {
+                                    if let Some(h) = &player.health {
+                                        ui.add(ProgressBar::new(h / 100.0).show_percentage());
+                                    }
+                                });
+                                row.col(|ui| {
+                                    ui.label(match &player.nickname {
+                                        Some(x) => x.as_str(),
+                                        None => "",
                                     });
                                 });
                             });

@@ -7,6 +7,10 @@ use crate::highlevel::constants::{event_code, operation_code, pun_event_code};
 use crate::photon_data_type::{CustomData, PhotonDataType};
 use crate::PhotonHashmap;
 
+/// Represents a Photon View ID
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ViewId(pub i32);
+
 // NOTE: be very cautious when applying `@required`, parsing will fail if it is not present!
 // if you cannot prove that a property is actually always present, do not apply it.
 // Basically, always be more cautious than PUN is.

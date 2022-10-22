@@ -3,6 +3,12 @@ use crate::photon_data_type::PhotonDataType;
 
 const PHOTON_NETWORK_MAX_VIEW_IDS: i32 = 1000;
 
+impl ViewId {
+    pub fn get_owner_id(&self) -> i32 {
+        self.0 / PHOTON_NETWORK_MAX_VIEW_IDS
+    }
+}
+
 impl RpcEvent {
     /// Drains the [Self::data] field
     pub fn extract_rpc_call(&mut self) -> Result<RpcCall, FromMapError> {
@@ -68,8 +74,8 @@ impl SerializedData {
         })
     }
 
-    pub fn get_owner_id(&self) -> i32 {
-        self.view_id / PHOTON_NETWORK_MAX_VIEW_IDS
+    pub fn get_view_id(&self) -> ViewId {
+        ViewId(self.view_id)
     }
 
     // NOTE: could add an implementation to parse this component as a Transform, Rigidbody or Rigidbody2D, as they have
@@ -77,8 +83,14 @@ impl SerializedData {
     // `onSerializeRigidBodyOption` value, though.
 }
 
+impl InstantiationEventData {
+    pub fn get_view_id(&self) -> ViewId {
+        ViewId(self.instantiation_id)
+    }
+}
+
 impl RpcCall {
-    pub fn get_owner_id(&self) -> i32 {
-        self.net_view_id / PHOTON_NETWORK_MAX_VIEW_IDS
+    pub fn get_view_id(&self) -> ViewId {
+        ViewId(self.net_view_id)
     }
 }

@@ -19,7 +19,7 @@ use tracing::{debug, trace, warn};
 use super::VersionInfo;
 use crate::{
     hax::{HaxState, PlayerActor},
-    protocol::rpc::get_rpc_method_name,
+    protocol::{player_script::PlayerScript, rpc::get_rpc_method_name},
     proxy::{Direction, WebSocketServer},
 };
 
@@ -259,7 +259,7 @@ impl HaxState {
 
                                 let data = RpcCall::from_map(&mut event_content)?;
 
-                                let sender = data.get_owner_id();
+                                let sender = data.get_view_id().get_owner_id();
                                 let method_name =
                                     get_rpc_method_name(&data).unwrap_or_else(|_| "?".into());
                                 let parameters = match &data.in_method_parameters {
@@ -372,7 +372,24 @@ impl HaxState {
                         .get_serialized_data()
                         .ok_or_else(|| anyhow::anyhow!("SendSerialize data error"))?;
 
+                    let mut hax = futures::executor::block_on(hax.lock());
+                    let (_, state) = match &mut hax.gameplay_state {
+                        Some(x) => x,
+                        _ => anyhow::bail!("gameplay state is None"),
+                    };
+
                     for obj in serialized_data {
+                        let actor_id = obj.get_view_id().get_owner_id();
+                        if let Some(actor) = state.players.get_mut(&actor_id) {
+                            let player_script = PlayerScript::from_object_array(&obj.data_stream)?;
+                            trace!(
+                                actor_id,
+                                player_script = format!("{player_script:?}"),
+                                "SendSerialize for actor"
+                            );
+
+                            actor.merge_player_script(&player_script);
+                        }
                         trace!(
                             direction = "client",
                             view_id = obj.view_id,
@@ -385,7 +402,7 @@ impl HaxState {
                     let mut event = RpcEvent::from_map(&mut event.parameters)?;
                     let data = event.extract_rpc_call()?;
 
-                    let sender = data.get_owner_id();
+                    let sender = data.get_view_id().get_owner_id();
                     let method_name = get_rpc_method_name(&data).unwrap_or_else(|_| "?".into());
                     let parameters = match &data.in_method_parameters {
                         Some(p) => p

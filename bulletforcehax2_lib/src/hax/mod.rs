@@ -6,13 +6,13 @@ mod impl_proxy;
 use std::sync::Arc;
 
 use photon_lib::{
-    highlevel::structs::{InstantiationEventData, Player},
+    highlevel::structs::{InstantiationEventData, Player, ViewId},
     indexmap::IndexMap,
     photon_data_type::PhotonDataType,
 };
-use tracing::{debug, warn};
+use tracing::{trace, warn};
 
-use crate::proxy::websocket_proxy::WebSocketProxy;
+use crate::{protocol::player_script::PlayerScript, proxy::websocket_proxy::WebSocketProxy};
 
 /// An instance of BulletForceHaxV2. It handles the webrequest and websocket proxies as well as the internal state.
 #[derive(Default)]
@@ -70,15 +70,17 @@ pub struct GameplayState {
 
 #[derive(Default, Debug)]
 pub struct PlayerActor {
-    pub view_id: Option<i32>,
+    pub view_id: Option<ViewId>,
     pub user_id: Option<String>,
     pub nickname: Option<String>,
     pub team_number: Option<u8>,
+
+    pub health: Option<f32>,
 }
 
 impl PlayerActor {
     pub fn merge_player(&mut self, player: Player) {
-        debug!(
+        trace!(
             data = format!("{player:?}"),
             "Merging player with actor info"
         );
@@ -103,12 +105,21 @@ impl PlayerActor {
             );
             return;
         }
-        debug!(
+        trace!(
             data = format!("{instantiation_data:?}"),
             "Merging player with instantiation data"
         );
 
-        self.view_id = Some(instantiation_data.instantiation_id);
+        self.view_id = Some(instantiation_data.get_view_id());
+    }
+
+    pub fn merge_player_script(&mut self, script: &PlayerScript) {
+        trace!(
+            data = format!("{script:?}"),
+            "Merging player with player script"
+        );
+
+        self.health = Some(script.health as f32 / 100.0);
     }
 }
 
