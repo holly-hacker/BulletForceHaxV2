@@ -8,6 +8,7 @@ use photon_lib::{
             DestroyEvent, DestroyEventData, InstantiationEvent, InstantiationEventData,
             JoinGameRequest, JoinGameResponseSuccess, LeaveEvent, Player, PropertiesChangedEvent,
             RaiseEvent, RoomInfo, RoomInfoList, RpcCall, RpcEvent, SendSerializeEvent,
+            SetPropertiesOperationRequest,
         },
         PhotonMapConversion, PhotonParameterMapConversion,
     },
@@ -218,6 +219,27 @@ impl HaxState {
                         debug!(request = format!("_req:?"), "Game Join Request");
                     }
 
+                    operation_code::SET_PROPERTIES => {
+                        let mut req = SetPropertiesOperationRequest::from_map(
+                            &mut operation_request.parameters,
+                        )?;
+
+                        if let Some(actor) = req.actor_nr {
+                            // properties are for actor, not for room
+                            let player_props = Player::from_map(&mut req.properties)?;
+
+                            let mut hax = futures::executor::block_on(hax.lock());
+                            let (_, state) = match &mut hax.gameplay_state {
+                                Some(x) => x,
+                                _ => anyhow::bail!("gameplay state is None"),
+                            };
+
+                            if let Some(player) = state.players.get_mut(&actor) {
+                                player.merge_player(player_props);
+                            }
+                        }
+                    }
+
                     operation_code::RAISE_EVENT => {
                         let req = RaiseEvent::from_map(&mut operation_request.parameters)?;
 
@@ -256,6 +278,47 @@ impl HaxState {
 
                                 let hax = futures::executor::block_on(hax.lock());
                                 merge_instantiation(hax, sender, &event_data)?;
+                            }
+                            pun_event_code::SEND_SERIALIZE
+                            | pun_event_code::SEND_SERIALIZE_RELIABLE => {
+                                let req_data = match req_data {
+                                    Some(x) => x,
+                                    None => anyhow::bail!(
+                                        "SEND_SERIALIZE(_RELIABLE) event without data"
+                                    ),
+                                };
+                                let serialized_data =
+                                    SendSerializeEvent::parse_serialized_data(&req_data)
+                                        .ok_or_else(|| {
+                                            anyhow::anyhow!("Cound not parse serialized data")
+                                        })?;
+
+                                let mut hax = futures::executor::block_on(hax.lock());
+                                let (_, state) = match &mut hax.gameplay_state {
+                                    Some(x) => x,
+                                    _ => anyhow::bail!("gameplay state is None"),
+                                };
+
+                                for obj in serialized_data {
+                                    let actor_id = obj.get_view_id().get_owner_id();
+                                    if let Some(actor) = state.players.get_mut(&actor_id) {
+                                        let player_script =
+                                            PlayerScript::from_object_array(&obj.data_stream)?;
+                                        trace!(
+                                            actor_id,
+                                            player_script = format!("{player_script:?}"),
+                                            "SendSerialize for actor"
+                                        );
+
+                                        actor.merge_player_script(&player_script);
+                                    }
+                                    trace!(
+                                        direction = "client",
+                                        view_id = obj.view_id,
+                                        data = format!("{:?}", obj.data_stream),
+                                        "SendSerialize"
+                                    );
+                                }
                             }
                             pun_event_code::RPC => {
                                 // client->server RPC call

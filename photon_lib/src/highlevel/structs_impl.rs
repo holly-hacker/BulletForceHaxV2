@@ -1,5 +1,5 @@
 use super::{structs::*, FromMapError, PhotonMapConversion};
-use crate::photon_data_type::PhotonDataType;
+use crate::{photon_data_type::PhotonDataType, PhotonHashmap};
 
 const PHOTON_NETWORK_MAX_VIEW_IDS: i32 = 1000;
 
@@ -20,15 +20,19 @@ impl SendSerializeEvent {
     // TODO: proper error type. probably want something generic like InvalidDataError
     /// Gets a copy of the serialized data in this event
     pub fn get_serialized_data(&self) -> Option<Vec<SerializedData>> {
-        _ = self.data.get(&PhotonDataType::Byte(1))?;
+        Self::parse_serialized_data(&self.data)
+    }
 
-        let header_len = match self.data.contains_key(&PhotonDataType::Byte(1)) {
+    pub fn parse_serialized_data(data: &PhotonHashmap) -> Option<Vec<SerializedData>> {
+        _ = data.get(&PhotonDataType::Byte(1))?;
+
+        let header_len = match data.contains_key(&PhotonDataType::Byte(1)) {
             true => 2,
             false => 1,
         };
 
         const DATA_INITIAL_INDEX: usize = 10;
-        let data_len = self.data.len() - header_len;
+        let data_len = data.len() - header_len;
         let mut ret = vec![];
         for i in 0..data_len {
             // items start at key 10 and count up
@@ -36,7 +40,7 @@ impl SendSerializeEvent {
             let index = i + DATA_INITIAL_INDEX;
             let index = (index & 0xFF) as u8; // NOTE: official implementation does wrap here
 
-            let found = self.data.get(&PhotonDataType::Byte(index));
+            let found = data.get(&PhotonDataType::Byte(index));
             let found = match found {
                 Some(PhotonDataType::ObjectArray(x)) => x,
                 _ => return None,

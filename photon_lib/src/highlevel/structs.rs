@@ -23,6 +23,26 @@ impl_u8_map_conversion! {
         games: PhotonHashmap,
     }
 
+    SetPropertiesOperationRequest {
+        @required
+        [parameter_code::PROPERTIES => PhotonDataType::Hashtable]
+        properties: PhotonHashmap,
+
+        /// Only present when updating an actor, not when updating a room.
+        [parameter_code::ACTOR_NR => PhotonDataType::Integer]
+        actor_nr: i32,
+
+        @required
+        [parameter_code::BROADCAST => PhotonDataType::Boolean]
+        broadcast: bool,
+
+        [parameter_code::EXPECTED_VALUES => PhotonDataType::Hashtable]
+        expected_values: PhotonHashmap,
+
+        [parameter_code::EVENT_FORWARD => PhotonDataType::Boolean]
+        event_forward: bool,
+    }
+
     /// Request parameter of [operation_code::JOIN_GAME].
     #[derive(Debug)]
     JoinGameRequest {
