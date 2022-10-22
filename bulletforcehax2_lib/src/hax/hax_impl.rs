@@ -5,8 +5,9 @@ use photon_lib::{
     highlevel::{
         constants::{event_code, operation_code, parameter_code, pun_event_code},
         structs::{
-            InstantiationEvent, InstantiationEventData, JoinGameRequest, JoinGameResponseSuccess,
-            Player, RaiseEvent, RoomInfo, RoomInfoList, RpcCall, RpcEvent, SendSerializeEvent,
+            DestroyEvent, DestroyEventData, InstantiationEvent, InstantiationEventData,
+            JoinGameRequest, JoinGameResponseSuccess, LeaveEvent, Player, PropertiesChangedEvent,
+            RaiseEvent, RoomInfo, RoomInfoList, RpcCall, RpcEvent, SendSerializeEvent,
         },
         PhotonMapConversion, PhotonParameterMapConversion,
     },
@@ -232,6 +233,12 @@ impl HaxState {
                         };
 
                         match req.event_code {
+                            event_code::LEAVE
+                            | event_code::PROPERTIES_CHANGED
+                            | pun_event_code::DESTROY => {
+                                // never seen these happen in practice. If they occur, document them!
+                                warn!(event_code = req.event_code, "Unexpected raised event");
+                            }
                             pun_event_code::INSTANTIATION => {
                                 let mut req_data = match req_data {
                                     Some(x) => x,
@@ -349,6 +356,63 @@ impl HaxState {
                     }
 
                     // PLAYER_PROPERTIES field is pretty useless, only contains empty string as nickname
+                }
+                event_code::LEAVE => {
+                    let event = LeaveEvent::from_map(&mut event.parameters)?;
+                    let sender = event.sender_actor.unwrap_or(-1);
+                    debug!(
+                        data = format!("{event:?}"),
+                        sender,
+                        direction = "client",
+                        "Leave"
+                    );
+
+                    let mut hax = futures::executor::block_on(hax.lock());
+                    let (_, state) = match &mut hax.gameplay_state {
+                        Some(x) => x,
+                        _ => anyhow::bail!("gameplay state is None"),
+                    };
+
+                    state.players.remove(&sender);
+                }
+                event_code::PROPERTIES_CHANGED => {
+                    let mut event = PropertiesChangedEvent::from_map(&mut event.parameters)?;
+                    let sender = event.sender_actor.unwrap_or(-1);
+                    debug!(
+                        data = format!("{event:?}"),
+                        sender,
+                        direction = "client",
+                        "PropertiesChanged"
+                    );
+
+                    if event.target_actor_number != 0 {
+                        let mut hax = futures::executor::block_on(hax.lock());
+                        let (_, state) = match &mut hax.gameplay_state {
+                            Some(x) => x,
+                            _ => anyhow::bail!("gameplay state is None"),
+                        };
+
+                        let player = state
+                            .players
+                            .get_mut(&event.target_actor_number)
+                            .ok_or_else(|| anyhow::anyhow!("Failed to find actor"))?;
+
+                        let player_props = Player::from_map(&mut event.properties)?;
+
+                        player.merge_player(player_props);
+                    }
+                }
+                // NOTE: this only destroys the game object
+                pun_event_code::DESTROY => {
+                    let mut event = DestroyEvent::from_map(&mut event.parameters)?;
+                    let sender = event.sender_actor.unwrap_or(-1);
+                    let event_data = DestroyEventData::from_map(&mut event.data)?;
+                    debug!(
+                        data = format!("{event_data:?}"),
+                        sender,
+                        direction = "client",
+                        "Destroy"
+                    );
                 }
                 pun_event_code::INSTANTIATION => {
                     let mut event = InstantiationEvent::from_map(&mut event.parameters)?;

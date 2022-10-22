@@ -83,6 +83,12 @@ impl SerializedData {
     // `onSerializeRigidBodyOption` value, though.
 }
 
+impl DestroyEventData {
+    pub fn get_view_id(&self) -> ViewId {
+        ViewId(self.view_id)
+    }
+}
+
 impl InstantiationEventData {
     pub fn get_view_id(&self) -> ViewId {
         ViewId(self.instantiation_id)

@@ -135,6 +135,51 @@ impl_u8_map_conversion! {
         event_forward: bool,
     }
 
+    /// Parameter for [event_code::LEAVE].
+    #[derive(Debug)]
+    LeaveEvent {
+        /// The id of the player who left
+        [parameter_code::ACTOR_NR => PhotonDataType::Integer]
+        sender_actor: i32,
+
+        [parameter_code::ACTOR_LIST => PhotonDataType::Array]
+        actors: Vec<PhotonDataType>,
+
+        [parameter_code::IS_INACTIVE => PhotonDataType::Boolean]
+        is_inactive: bool,
+
+        /// The new master client
+        [parameter_code::MASTER_CLIENT_ID => PhotonDataType::Integer]
+        master_client_id: i32,
+    }
+
+    /// Parameter for [event_code::PROPERTIES_CHANGED].
+    #[derive(Debug)]
+    PropertiesChangedEvent {
+        /// The id of the player who left
+        [parameter_code::ACTOR_NR => PhotonDataType::Integer]
+        sender_actor: i32,
+
+        @required
+        [parameter_code::TARGET_ACTOR_NR => PhotonDataType::Integer]
+        target_actor_number: i32,
+
+        /// If [Self::target_actor_number] is 0, these are game properties. Otherwise these are actor properties.
+        @required
+        [parameter_code::PROPERTIES => PhotonDataType::Hashtable]
+        properties: PhotonHashmap,
+    }
+
+    /// Parameter for [pun_event_code::DESTROY].
+    DestroyEvent {
+        [parameter_code::ACTOR_NR => PhotonDataType::Integer]
+        sender_actor: i32,
+
+        @required
+        [parameter_code::DATA => PhotonDataType::Hashtable]
+        data: PhotonHashmap,
+    }
+
     /// Parameter for [pun_event_code::INSTANTIATION].
     InstantiationEvent {
         [parameter_code::ACTOR_NR => PhotonDataType::Integer]
@@ -232,6 +277,14 @@ impl_photon_map_conversion! {
 
         [PhotonDataType::Byte(actor_properties::IS_INACTIVE) => PhotonDataType::Boolean]
         is_inactive: bool,
+    }
+
+    /// Event data from [DestroyEvent].
+    #[derive(Debug)]
+    DestroyEventData {
+        @required
+        [PhotonDataType::Byte(0) => PhotonDataType::Integer]
+        view_id: i32,
     }
 
     /// Event data from [InstantiationEvent].
