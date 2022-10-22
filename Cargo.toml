@@ -5,3 +5,8 @@ workspace.members = [
     "bulletforcehax2_app",
     "tao_egui",
 ]
+
+[profile.release-publish]
+inherits = "release"
+lto = true
+codegen-units = 1
