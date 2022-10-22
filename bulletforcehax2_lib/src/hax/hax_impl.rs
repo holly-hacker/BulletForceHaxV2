@@ -12,7 +12,6 @@ use photon_lib::{
     },
     photon_data_type::PhotonDataType,
     photon_message::PhotonMessage,
-    utils::PhotonDataTypeExtensions,
 };
 use tracing::{debug, trace, warn};
 
@@ -235,13 +234,12 @@ impl HaxState {
                         match req.event_code {
                             pun_event_code::INSTANTIATION => {
                                 let mut req_data = match req_data {
-                                    Some(x) => x.to_parameter_map_lossy(),
+                                    Some(x) => x,
                                     None => anyhow::bail!("INSTANTIATION event without data"),
                                 };
 
-                                let mut event = InstantiationEvent::from_map(&mut req_data)?;
-                                let sender = event.sender_actor.unwrap_or(-1);
-                                let event_data = InstantiationEventData::from_map(&mut event.data)?;
+                                let event_data = InstantiationEventData::from_map(&mut req_data)?;
+                                let sender = event_data.get_view_id().get_owner_id();
                                 debug!(
                                     data = format!("{event_data:?}"),
                                     sender,
