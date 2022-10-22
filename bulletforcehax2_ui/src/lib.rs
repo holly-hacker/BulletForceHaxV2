@@ -116,7 +116,7 @@ impl BulletForceHaxMenu {
                                 });
                                 row.col(|ui| {
                                     if let Some(x) = &player.position {
-                                        ui.label(format!("{:?}", x.floats()));
+                                        ui.label(format!("{:.2}, {:.2}, {:.2}", x.0, x.1, x.2));
                                     };
                                 });
                                 row.col(|ui| {
