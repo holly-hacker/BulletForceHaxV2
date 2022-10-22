@@ -226,7 +226,7 @@ impl HaxState {
 
                         if let Some(actor) = req.actor_nr {
                             // properties are for actor, not for room
-                            let player_props = Player::from_map(&mut req.properties)?;
+                            let mut player_props = Player::from_map(&mut req.properties)?;
 
                             let mut hax = futures::executor::block_on(hax.lock());
                             let (_, state) = match &mut hax.gameplay_state {
@@ -235,7 +235,20 @@ impl HaxState {
                             };
 
                             if let Some(player) = state.players.get_mut(&actor) {
-                                player.merge_player(player_props);
+                                player.merge_player(&player_props);
+                            }
+
+                            if let (Some(nick), (true, new_nick)) =
+                                (&mut player_props.nickname, &hax.spoofed_name)
+                            {
+                                *nick = new_nick.clone();
+
+                                player_props.into_map(&mut req.properties);
+                                req.into_map(&mut operation_request.parameters);
+
+                                return Ok(WebSocketHookAction::Change(
+                                    PhotonMessage::OperationRequest(operation_request),
+                                ));
                             }
                         }
                     }
@@ -379,7 +392,7 @@ impl HaxState {
                             let mut actor = PlayerActor::default();
 
                             let player = Player::from_map(&mut actor_props.clone())?;
-                            actor.merge_player(player);
+                            actor.merge_player(&player);
 
                             debug!(actor_id, "Found new actor");
                             state.players.insert(actor_id, actor);
@@ -462,7 +475,7 @@ impl HaxState {
 
                         let player_props = Player::from_map(&mut event.properties)?;
 
-                        player.merge_player(player_props);
+                        player.merge_player(&player_props);
                     }
                 }
                 // NOTE: this only destroys the game object

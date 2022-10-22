@@ -39,6 +39,7 @@ pub struct HaxState {
     pub show_mobile_games: bool,
     pub show_other_versions: bool,
     pub strip_passwords: bool,
+    pub spoofed_name: (bool, String),
 }
 
 /// Game-related state that is kept over the lifetime of the program.
@@ -78,19 +79,20 @@ pub struct PlayerActor {
 
     pub health: Option<f32>,
     pub position: Option<Vector3>,
+    pub facing_direction: Option<f32>,
 }
 
 impl PlayerActor {
-    pub fn merge_player(&mut self, player: Player) {
+    pub fn merge_player(&mut self, player: &Player) {
         trace!(
             data = format!("{player:?}"),
             "Merging player with actor info"
         );
-        if let Some(user_id) = player.user_id {
-            self.user_id = Some(user_id);
+        if let Some(user_id) = &player.user_id {
+            self.user_id = Some(user_id.clone());
         }
-        if let Some(nickname) = player.nickname {
-            self.nickname = Some(nickname);
+        if let Some(nickname) = &player.nickname {
+            self.nickname = Some(nickname.clone());
         }
 
         if let Some(PhotonDataType::Byte(team_number)) = player.custom_properties.get("teamNumber")
@@ -123,6 +125,7 @@ impl PlayerActor {
 
         self.health = Some(script.health as f32 / 100.0);
         self.position = Some(script.position.clone());
+        self.facing_direction = Some(script.move_angle as f32 / 10.0);
     }
 }
 

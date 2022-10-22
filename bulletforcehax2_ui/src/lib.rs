@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use bulletforcehax2_lib::hax::HaxState;
-use egui::{ProgressBar, RichText};
+use egui::{ProgressBar, RichText, TextEdit};
 use egui_extras::{Size, TableBuilder};
 use futures_util::lock::Mutex;
 
@@ -47,6 +47,14 @@ impl BulletForceHaxMenu {
                 "Show games for other versions",
             );
             ui.checkbox(&mut hax.strip_passwords, "Strip passwords");
+            ui.add_space(16f32);
+
+            ui.heading("Gameplay");
+            ui.horizontal(|ui| {
+                let mut enabled = &mut hax.spoofed_name.0;
+                ui.checkbox(&mut enabled, "Spoof name");
+                ui.add_enabled(*enabled, TextEdit::singleline(&mut hax.spoofed_name.1));
+            });
             ui.add_space(16f32);
 
             ui.heading("UI");

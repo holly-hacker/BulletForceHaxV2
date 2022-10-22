@@ -5,8 +5,11 @@ use photon_lib::{
 
 #[derive(Debug)]
 pub struct PlayerScript {
-    pub aiming_x: i16,
-    pub aiming_y: i16,
+    /// Value between 0 and 3600 where 0 is straight ahead.
+    pub pitch: i16,
+    /// Value between 0 and 3600.
+    pub yaw: i16,
+    /// Related to [Self::yaw].
     pub move_angle: i16, // move angle?
     pub number_of_kills: i16,
     pub number_of_deaths: i16,
@@ -39,11 +42,11 @@ pub struct PlayerScript {
 impl PlayerScript {
     pub fn from_object_array(objects: &[PhotonDataType]) -> anyhow::Result<Self> {
         Ok(Self {
-            aiming_x: match objects.get(0) {
+            pitch: match objects.get(0) {
                 Some(PhotonDataType::Short(x)) => *x,
                 _ => anyhow::bail!("Expected type Short in PlayerScript position 0"),
             },
-            aiming_y: match objects.get(1) {
+            yaw: match objects.get(1) {
                 Some(PhotonDataType::Short(x)) => *x,
                 _ => anyhow::bail!("Expected type Short in PlayerScript position 1"),
             },
