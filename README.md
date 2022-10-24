@@ -9,6 +9,8 @@ the game without bloated, ad-ridden websites that redownload the entire game eve
 public because I've mostly lost interest and want to work on other projects, but I may continue working on it in the
 future.
 
+This is a successor of [BulletForceHax](https://github.com/HoLLy-HaCKeR/bulletforcehax).
+
 ## How does it work?
 `bulletforcehax2_app` will build an executable that runs a webserver and opens a webview that's pointed to it. This
 webserver hosts the game files and contains some javascript that will hook Unity's websocket and webrequest functions
