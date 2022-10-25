@@ -1,8 +1,8 @@
 # BulletForceHaxV2
 
-[![Build history](https://buildstats.info/github/chart/holly-hacker/bulletforcehaxv2/CI-BuildStats?branch=main)](https://github.com/HoLLy-HaCKeR/BulletForceHaxV2/actions)
+[![Build history](https://buildstats.info/github/chart/holly-hacker/bulletforcehaxv2/?branch=main)](https://github.com/HoLLy-HaCKeR/BulletForceHaxV2/actions)
 
-![Dependency status](https://deps.rs/repo/github/holly-hacker/bulletforcehaxv2/status.svg)
+[![Dependency status](https://deps.rs/repo/github/holly-hacker/bulletforcehaxv2/status.svg)](https://deps.rs/repo/github/holly-hacker/bulletforcehaxv2/)
 
 This repository holds a launcher and MITM-based cheat for Bullet Force. It allows you both a convenient way to launch
 the game without bloated, ad-ridden websites that redownload the entire game every time, and cheats. I'm making this
