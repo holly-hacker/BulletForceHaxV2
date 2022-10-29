@@ -9,6 +9,7 @@
 
     <script>
         // handle poki integration
+        /*
         window.initPokiBridge = (n) => {
             console.log("initPokiBridge called!", n);
             window.gameInstance.SendMessage(n, "ready");
@@ -18,6 +19,19 @@
             window.gameInstance.SendMessage(n, "commercialBreakCompleted");
         };
         window.midrollSurprise = function () { console.log("midrollSurprise called!", arguments) };
+        */
+
+        // handle CrazyGames integration
+        window.Crazygames = {
+            gameplayStart: function() {console.log("called gameplayStart", arguments)},
+            gameplayStop: function() {console.log("called gameplayStop", arguments)},
+            screenshotReceived: function() {console.log("called screenshotReceived", arguments)},
+            happytime: function() {console.log("called happytime", arguments)},
+            init: function() {console.log("called init", arguments)},
+            requestAd: function() {console.log("called requestAd", arguments)},
+            requestBanners: function() {console.log("called requestBanners", arguments)},
+            requestInviteUrl: function() {console.log("called requestInviteUrl", arguments)},
+        };
 
         function ptr_to_str(ptr) {
             return window.gameInstance.Module.ccall("$fake_ccall$", "string", ["number"], [ptr]);
@@ -35,6 +49,7 @@
             env["_JS_Eval_EvalJS"] = (arg) => { console.log("EVAL JS", ptr_to_str(arg)) };
 
             // nop various poki api calls
+            /*
             let allowed_pokisdk_calls = ["_JS_PokiSDK_commercialBreak", "_JS_PokiSDK_initPokiBridge"];
             for (let key in env) {
                 if (env.hasOwnProperty(key) && typeof env[key] == "function") {
@@ -45,6 +60,7 @@
                     env[key] = function () { console.log(`stubbed poki call ${key} got called`, arguments); }
                 }
             }
+            */
 
             if (bfh_config.hax) {
                 console.log("Enabling web request and websocket hooks")
