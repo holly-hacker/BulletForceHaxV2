@@ -64,8 +64,12 @@ async fn handler_main(
     let file_path = match path {
         "/Build/$$game$$.json" => Some(version.get_game_json()),
         "/$$loader$$.js" => Some(version.get_unity_loader()),
-        _ if path.starts_with("/Build/") => Some(version.get_path(path.trim_start_matches('/'))),
-        _ => None,
+        _ => {
+            let path = path.strip_prefix("/Build").unwrap_or(path);
+
+            let path = version.get_path(path.trim_start_matches('/'));
+            path.exists().then_some(path)
+        }
     };
 
     if let Some(file_path) = file_path {
