@@ -10,11 +10,8 @@ use tower_http::decompression::{Decompression, DecompressionLayer};
 use tracing::debug;
 
 const UNITY_LOADER_URL: &str = "https://files.crazygames.com/unityloaders/UnityLoader-v3.js";
-
-const POKI_URL: &str = "https://poki.com/en/g/bullet-force-multiplayer";
-const POKI_FRAME_URL_PATTERN: &str = r"https://games\.poki\.com/\d+/[\da-f-]+";
-const POKI_GAME_URL_PATTERN: &str = r"https://[a-f\d-]+\.poki-gdn\.com/[a-f\d-]+/index\.html";
-const POKI_GAME_JSON_PATTERN: &str = r"unityWebglBuildUrl: '([^']+)'";
+const CG_FRAME_URL: &str = "https://games.crazygames.com/en_US/bullet-force-multiplayer/index.html";
+const CG_JSON_PATTERN: &str = r#"moduleJsonUrl":"([^"]+)"#;
 
 /// Describes the role of a downloading file.
 #[derive(Clone, Copy)]
@@ -77,43 +74,32 @@ async fn do_download(tx: Sender<ProgressReport>) -> Result<()> {
     .await?;
 
     // find game files
-    let source_1 = hyper_get(&mut client, POKI_URL)
+    let source_1 = hyper_get(&mut client, CG_FRAME_URL)
         .await
         .context("get source_1")?;
-    let match_1 = regex::Regex::new(POKI_FRAME_URL_PATTERN)?
-        .find(&source_1)
-        .ok_or_else(|| anyhow!("Could not find poki regex 1"))?;
-    let frame_url = match_1.as_str();
-    let source_2 = hyper_get_with_referrer(&mut client, frame_url)
-        .await
-        .context("get source_2")?;
-    let match_2 = regex::Regex::new(POKI_GAME_URL_PATTERN)?
-        .find(&source_2)
-        .ok_or_else(|| anyhow!("Could not find poki regex 2"))?;
-    let game_url = match_2.as_str();
-    let source_3 = hyper_get_with_referrer(&mut client, game_url)
-        .await
-        .context("get source_3")?;
-    let match_3 = regex::Regex::new(POKI_GAME_JSON_PATTERN)?
-        .captures(&source_3)
-        .ok_or_else(|| anyhow!("Could not find poki regex 3"))?
+    let match_1 = regex::Regex::new(CG_JSON_PATTERN)?
+        .captures(&source_1)
+        .ok_or_else(|| anyhow!("Could not find CG regex 1"))?
         .get(1)
-        .ok_or_else(|| anyhow!("Could not find group in poki regex 3"))?;
-    let rel_url_json = match_3.as_str().replace("\\/", "/");
+        .ok_or_else(|| anyhow!("Could not find group in CG regex 1"))?;
+    let abs_url_json = match_1.as_str();
+    let rel_url_json = abs_url_json.split('/').last().ok_or_else(|| {
+        anyhow!("Could not split json file url. Found something invalid? '{abs_url_json}'")
+    })?;
+    let abs_url_json_base = &abs_url_json[..(abs_url_json.len() - rel_url_json.len() - 1)]; // don't include /
 
-    let abs_url_json_base = &game_url[..game_url.rfind('/').unwrap()];
-    let abs_url_json = abs_url_json_base.to_string() + "/" + &rel_url_json;
+    // TODO: this can happen in parallel
     download_file_with_progress(
         &mut client,
-        &abs_url_json,
-        &rel_url_json,
+        abs_url_json,
+        rel_url_json,
         FileType::GameJson,
         tx.clone(),
     )
     .await?;
 
     // yes I'm downloading the json twice, I cba to rewrite the code
-    let json = hyper_get(&mut client, &abs_url_json).await?;
+    let json = hyper_get(&mut client, abs_url_json).await?;
     let json: serde_json::Value = serde_json::from_str(&json).context("parse game json")?;
 
     let base_url_file = &abs_url_json[..abs_url_json.rfind('/').unwrap()];
@@ -156,25 +142,6 @@ where
 {
     let uri = hyper::Uri::try_from(url)?;
     let request = Request::builder().uri(uri).body(Body::empty())?;
-    let response = client.call(request).await?;
-    let bytes = hyper::body::to_bytes(response)
-        .await
-        .map_err(|e| anyhow!("Error while getting http: {}", e))?;
-    Ok(String::from_utf8(bytes.to_vec())?)
-}
-
-async fn hyper_get_with_referrer<T>(
-    client: &mut Decompression<Client<T>>,
-    url: &str,
-) -> Result<String>
-where
-    T: hyper::client::connect::Connect + Clone + Send + Sync + 'static,
-{
-    let uri = hyper::Uri::try_from(url)?;
-    let request = Request::builder()
-        .header("referer", "https://poki.com")
-        .uri(uri)
-        .body(Body::empty())?;
     let response = client.call(request).await?;
     let bytes = hyper::body::to_bytes(response)
         .await

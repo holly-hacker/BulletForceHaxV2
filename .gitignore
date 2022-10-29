@@ -3,6 +3,7 @@
 
 # bfhax user data
 bfhax_data
+bfhax_data.bak
 config.toml
 
 # coverage data
