@@ -51,8 +51,8 @@ impl BulletForceHaxMenu {
 
             ui.heading("Gameplay");
             ui.horizontal(|ui| {
-                let mut enabled = &mut hax.spoofed_name.0;
-                ui.checkbox(&mut enabled, "Spoof name");
+                let enabled = &mut hax.spoofed_name.0;
+                ui.checkbox(enabled, "Spoof name");
                 ui.add_enabled(*enabled, TextEdit::singleline(&mut hax.spoofed_name.1));
             });
             ui.add_space(16f32);

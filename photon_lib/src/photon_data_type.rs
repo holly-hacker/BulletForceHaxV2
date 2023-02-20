@@ -542,8 +542,8 @@ impl CustomData {
                 Ok(CustomData::PhotonPlayer(bytes.get_i32()))
             }
             _ => {
-                check_remaining!(bytes, len as usize);
-                let mut v = vec![0u8; len as usize];
+                check_remaining!(bytes, len);
+                let mut v = vec![0u8; len];
                 bytes.copy_to_slice(&mut v);
                 Ok(CustomData::Unrecognized(type_code, v))
             }

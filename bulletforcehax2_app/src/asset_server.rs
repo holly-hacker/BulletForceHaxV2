@@ -81,7 +81,7 @@ async fn handler_main(
         // tokio_util::io::ReaderStream could be an option but it pulls in a bunch of dependencies and I dont know if
         // there will be a performance improvement
         let content = std::fs::read(&file_path)
-            .with_context(|| format!("read file {:?} for req {:?}", file_path, path))?;
+            .with_context(|| format!("read file {file_path:?} for req {path:?}"))?;
 
         let builder = ResponseBuilder::new();
         let result = builder
