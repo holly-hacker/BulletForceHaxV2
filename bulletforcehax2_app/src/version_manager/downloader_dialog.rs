@@ -6,7 +6,7 @@ use bytesize::ByteSize;
 use eframe::App;
 use egui::{self, Color32, ProgressBar, RichText};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 pub struct DownloaderDialog {
     tx: Sender<Vec<DownloadedFile>>,
@@ -141,7 +141,7 @@ impl App for DownloaderDialog {
                         frame.close()
                     }
                     ProgressReport::Crashed(e) => {
-                        info!("Received crash message");
+                        error!("Received crash message: {e}");
                         self.error = Some(e)
                     }
                 }

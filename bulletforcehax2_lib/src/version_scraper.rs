@@ -9,16 +9,16 @@ use tower::{Service, ServiceBuilder, ServiceExt};
 use tower_http::decompression::{Decompression, DecompressionLayer};
 use tracing::debug;
 
-const UNITY_LOADER_URL: &str = "https://files.crazygames.com/unityloaders/UnityLoader-v3.js";
 const CG_FRAME_URL: &str = "https://games.crazygames.com/en_US/bullet-force-multiplayer/index.html";
-const CG_JSON_PATTERN: &str = r#"moduleJsonUrl":"([^"]+)"#;
+const CG_JSON_PATTERN: &str = "(?m)^var options = (.+);$";
 
 /// Describes the role of a downloading file.
 #[derive(Clone, Copy)]
 pub enum FileType {
     UnityLoader,
-    GameJson,
-    GameFile,
+    Framework,
+    Code,
+    Data,
 }
 
 /// Indicates progress on a downloading file
@@ -63,68 +63,47 @@ async fn do_download(tx: Sender<ProgressReport>) -> Result<()> {
         .layer(DecompressionLayer::new())
         .service(client);
 
-    // download loader
-    download_file_with_progress(
-        &mut client,
-        UNITY_LOADER_URL,
-        "UnityLoader.js",
-        FileType::UnityLoader,
-        tx.clone(),
-    )
-    .await?;
-
     // find game files
-    let source_1 = hyper_get(&mut client, CG_FRAME_URL)
+    let frame_source = hyper_get(&mut client, CG_FRAME_URL)
         .await
         .context("get source_1")?;
-    let match_1 = regex::Regex::new(CG_JSON_PATTERN)?
-        .captures(&source_1)
-        .ok_or_else(|| anyhow!("Could not find CG regex 1"))?
+    let json_match = regex::Regex::new(CG_JSON_PATTERN)?
+        .captures(&frame_source)
+        .ok_or_else(|| anyhow!("Could not find json regex"))?
         .get(1)
-        .ok_or_else(|| anyhow!("Could not find group in CG regex 1"))?;
-    let abs_url_json = match_1.as_str();
-    let rel_url_json = abs_url_json.split('/').last().ok_or_else(|| {
-        anyhow!("Could not split json file url. Found something invalid? '{abs_url_json}'")
-    })?;
-    let abs_url_json_base = &abs_url_json[..(abs_url_json.len() - rel_url_json.len() - 1)]; // don't include /
+        .ok_or_else(|| anyhow!("Could not find group in json regex"))?;
+    let json_string = json_match.as_str();
+    let json_obj: serde_json::Value = serde_json::from_str(json_string)?;
 
-    // TODO: this can happen in parallel
-    download_file_with_progress(
-        &mut client,
-        abs_url_json,
-        rel_url_json,
-        FileType::GameJson,
-        tx.clone(),
-    )
-    .await?;
+    let loader_options = json_obj["loaderOptions"]
+        .as_object()
+        .context("get .loaderOptions")?;
+    let config_options = loader_options["unityConfigOptions"]
+        .as_object()
+        .context("get .loaderOptions.unityConfigOptions")?;
 
-    // yes I'm downloading the json twice, I cba to rewrite the code
-    let json = hyper_get(&mut client, abs_url_json).await?;
-    let json: serde_json::Value = serde_json::from_str(&json).context("parse game json")?;
+    let url_loader = loader_options["unityLoaderUrl"]
+        .as_str()
+        .context("get .loaderOptions.unityLoaderUrl")?;
+    let url_code = config_options["codeUrl"]
+        .as_str()
+        .context("get .loaderOptions.unityConfigOptions.codeUrl")?;
+    let url_data = config_options["dataUrl"]
+        .as_str()
+        .context("get .loaderOptions.unityConfigOptions.dataUrl")?;
+    let url_framework = config_options["frameworkUrl"]
+        .as_str()
+        .context("get .loaderOptions.unityConfigOptions.frameworkUrl")?;
 
-    let base_url_file = &abs_url_json[..abs_url_json.rfind('/').unwrap()];
     // TODO: can happen in parallel
-    for rel_url in [
-        json["dataUrl"]
-            .as_str()
-            .ok_or_else(|| anyhow!("get `dataUrl` field in json"))?,
-        json["wasmCodeUrl"]
-            .as_str()
-            .ok_or_else(|| anyhow!("get `wasmCodeUrl` field in json"))?,
-        json["wasmFrameworkUrl"]
-            .as_str()
-            .ok_or_else(|| anyhow!("get `wasmFrameworkUrl` field in json"))?,
+    for (url, file_type) in [
+        (url_loader, FileType::UnityLoader),
+        (url_code, FileType::Code),
+        (url_data, FileType::Data),
+        (url_framework, FileType::Framework),
     ] {
-        let abs_url_file = format!("{base_url_file}/{rel_url}");
-        let file_name = &abs_url_file[(abs_url_json_base.len() + 1)..];
-        download_file_with_progress(
-            &mut client,
-            &abs_url_file,
-            file_name,
-            FileType::GameFile,
-            tx.clone(),
-        )
-        .await?;
+        let file_name = url.split('/').last().unwrap();
+        download_file_with_progress(&mut client, url, file_name, file_type, tx.clone()).await?;
     }
 
     tx.send(ProgressReport::AllFilesDownloaded)

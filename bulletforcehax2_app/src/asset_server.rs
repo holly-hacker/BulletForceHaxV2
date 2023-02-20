@@ -62,8 +62,10 @@ async fn handler_main(
     }
 
     let file_path = match path {
-        "/Build/$$game$$.json" => Some(version.get_game_json()),
         "/$$loader$$.js" => Some(version.get_unity_loader()),
+        "/$$code$$.wasm" => Some(version.get_code()),
+        "/$$data$$.data" => Some(version.get_data()),
+        "/$$framework$$.js" => Some(version.get_framework()),
         _ => {
             let path = path.strip_prefix("/Build").unwrap_or(path);
 

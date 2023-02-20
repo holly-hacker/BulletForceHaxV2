@@ -2,7 +2,7 @@ mod downloader_dialog;
 
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use bulletforcehax2_lib::version_scraper::FileType;
 use serde::{Deserialize, Serialize};
 use tracing::info;
@@ -34,7 +34,9 @@ impl VersionManager {
         let downloaded_files = DownloaderDialog::show_dialog().ok();
 
         let mut loader = None;
-        let mut json = None;
+        let mut code = None;
+        let mut data = None;
+        let mut framework = None;
 
         if let Some(downloaded_files) = downloaded_files {
             for file in downloaded_files {
@@ -47,15 +49,18 @@ impl VersionManager {
 
                 match file.file_type {
                     FileType::UnityLoader => loader = Some(file.name),
-                    FileType::GameJson => json = Some(file.name),
-                    FileType::GameFile => (),
+                    FileType::Framework => framework = Some(file.name),
+                    FileType::Code => code = Some(file.name),
+                    FileType::Data => data = Some(file.name),
                 }
             }
 
             let config = VersionConfig {
                 base_path: self.path.clone(),
-                unity_loader: loader.ok_or_else(|| anyhow!("did not find unity loader"))?,
-                game_json: json.ok_or_else(|| anyhow!("did not find game json"))?,
+                unity_loader: loader.context("did not find unity loader")?,
+                code: code.context("did not find code file")?,
+                data: data.context("did not find data file")?,
+                framework: framework.context("did not find framework file")?,
             };
 
             config.write_to_directory(&self.path)?;
@@ -73,7 +78,9 @@ pub struct VersionConfig {
     #[serde(skip)]
     base_path: PathBuf,
     unity_loader: String,
-    game_json: String,
+    code: String,
+    data: String,
+    framework: String,
 }
 
 impl VersionConfig {
@@ -83,12 +90,20 @@ impl VersionConfig {
         self.base_path.join(path)
     }
 
-    pub fn get_game_json(&self) -> PathBuf {
-        self.base_path.join(&self.game_json)
-    }
-
     pub fn get_unity_loader(&self) -> PathBuf {
         self.base_path.join(&self.unity_loader)
+    }
+
+    pub fn get_code(&self) -> PathBuf {
+        self.base_path.join(&self.code)
+    }
+
+    pub fn get_data(&self) -> PathBuf {
+        self.base_path.join(&self.data)
+    }
+
+    pub fn get_framework(&self) -> PathBuf {
+        self.base_path.join(&self.framework)
     }
 
     fn read_from_directory(dir_path: &Path) -> Result<Self> {
