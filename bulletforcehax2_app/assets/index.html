@@ -5,111 +5,122 @@
 </head>
 
 <body style="margin:0">
-    <div id="gameContainer"></div>
+    <canvas id="unity-canvas" width="960" height="600"></canvas>
 
     <script>
-        // handle poki integration
-        /*
-        window.initPokiBridge = (n) => {
-            console.log("initPokiBridge called!", n);
-            window.gameInstance.SendMessage(n, "ready");
-        };
-        window.commercialBreak = function (n) {
-            console.log("commercialBreak called!", arguments);
-            window.gameInstance.SendMessage(n, "commercialBreakCompleted");
-        };
-        window.midrollSurprise = function () { console.log("midrollSurprise called!", arguments) };
-        */
-
         // handle CrazyGames integration
         window.Crazygames = {
-            gameplayStart: function() {console.log("called gameplayStart", arguments)},
-            gameplayStop: function() {console.log("called gameplayStop", arguments)},
-            screenshotReceived: function() {console.log("called screenshotReceived", arguments)},
-            happytime: function() {console.log("called happytime", arguments)},
-            init: function() {console.log("called init", arguments)},
-            requestAd: function() {console.log("called requestAd", arguments)},
-            requestBanners: function() {console.log("called requestBanners", arguments)},
-            requestInviteUrl: function() {console.log("called requestInviteUrl", arguments)},
+            gameplayStart: function () { console.log("called gameplayStart", arguments) },
+            gameplayStop: function () { console.log("called gameplayStop", arguments) },
+            screenshotReceived: function () { console.log("called screenshotReceived", arguments) },
+            happytime: function () { console.log("called happytime", arguments) },
+            init: function () { console.log("called init", arguments); },
+            requestAd: function () { console.log("called requestAd", arguments) },
+            requestBanners: function () { console.log("called requestBanners", arguments) },
+            requestInviteUrl: function () { console.log("called requestInviteUrl", arguments) },
         };
 
         function ptr_to_str(ptr) {
-            return window.gameInstance.Module.ccall("$fake_ccall$", "string", ["number"], [ptr]);
+            return window.gameModule.ccall("$fake_ccall$", "string", ["number"], [ptr]);
         }
 
         // NOTE: you can only allocate a single string per hook
         function str_to_ptr(str) {
-            return window.gameInstance.Module.ccall("$fake_ccall$", "number", ["string"], [str]);
+            return window.gameModule.ccall("$fake_ccall$", "number", ["string"], [str]);
         }
 
         function processWasmImports(imports) {
-            console.log("Processing wasm imports");
-            let env = imports.env;
+            console.log("Processing wasm imports", imports);
 
-            env["_JS_Eval_EvalJS"] = (arg) => { console.log("EVAL JS", ptr_to_str(arg)) };
 
-            // nop various poki api calls
-            /*
-            let allowed_pokisdk_calls = ["_JS_PokiSDK_commercialBreak", "_JS_PokiSDK_initPokiBridge"];
-            for (let key in env) {
-                if (env.hasOwnProperty(key) && typeof env[key] == "function") {
-                    if (!key.startsWith("_JS_PokiSDK_")) continue;
-                    if (allowed_pokisdk_calls.indexOf(key) != -1) continue;
+            for (const fn in imports.a) {
+                const name = imports.a[fn].name;
 
-                    console.log("stubbing poki sdk call", key);
-                    env[key] = function () { console.log(`stubbed poki call ${key} got called`, arguments); }
+                if (name == '_JS_Eval_EvalJS') {
+                    imports.a[fn] = (arg) => { console.log("EVAL JS", ptr_to_str(arg)) };
                 }
-            }
-            */
-
-            if (bfh_config.hax) {
-                console.log("Enabling web request and websocket hooks")
-
-                let orig_socketCreate = env["_SocketCreate"];
-                env["_SocketCreate"] = function (url, protocols) {
-                    // NOTE: I can pass the protocol to the proxy as well, that may be useful in the future
-                    url = str_to_ptr(`ws://${window.location.host}/socket?${ptr_to_str(url)}`);
-                    let ret = orig_socketCreate(url, protocols);
-                    console.log("_SocketCreate", ptr_to_str(url), ptr_to_str(protocols), ret);
-                    return ret;
+                
+                // _JS_Log_Dump
+                if (name == '_JS_Log_Dump') {
+                    imports.a[fn] = (arg) => { console.log("_JS_Log_Dump", ptr_to_str(arg)) };
                 }
 
-                let orig_webRequestCreate = env["_JS_WebRequest_Create"];
-                env["_JS_WebRequest_Create"] = function (url, method) {
-                    url = str_to_ptr(`${window.location.href}request?${ptr_to_str(url)}`);
-                    let ret = orig_webRequestCreate(url, method);
-                    console.log("_JS_WebRequest_Create", ptr_to_str(url), ptr_to_str(method), ret);
-                    return ret;
+                if (bfh_config.hax) {
+                    if (name == '_SocketCreate') {
+                        console.log('hooking _SocketCreate');
+                        let orig_socketCreate = imports.a[fn];
+                        imports.a[fn] = function (url, protocols) {
+                            // NOTE: I can pass the protocol to the proxy as well, that may be useful in the future
+                            url = str_to_ptr(`ws://${window.location.host}/socket?${ptr_to_str(url)}`);
+                            let ret = orig_socketCreate(url, protocols);
+                            console.log("_SocketCreate", ptr_to_str(url), ptr_to_str(protocols), ret);
+                            return ret;
+                        }
+                    }
+
+                    if (name == '_JS_WebRequest_Create') {
+                        console.log('hooking _JS_WebRequest_Create');
+                        let orig_webRequestCreate = imports.a[fn];
+                        imports.a[fn] = function (url, method) {
+                            url = str_to_ptr(`${window.location.href}request?${ptr_to_str(url)}`);
+                            let ret = orig_webRequestCreate(url, method);
+                            console.log("_JS_WebRequest_Create", ptr_to_str(url), ptr_to_str(method), ret);
+                            return ret;
+                        }
+                    }
                 }
             }
         }
 
         let orig_instantiate = WebAssembly.instantiate;
         WebAssembly.instantiate = function (source, importObject) {
-            console.log("instantiating wasm object", importObject);
+            console.log("instantiating wasm object");
             processWasmImports(importObject);
             return orig_instantiate(source, importObject);
         }
 
         let orig_instantiateStreaming = WebAssembly.instantiateStreaming;
         WebAssembly.instantiateStreaming = function (source, importObject) {
-            console.log("instantiateStreaming wasm object", importObject);
+            console.log("instantiateStreaming wasm object");
             processWasmImports(importObject);
             return orig_instantiateStreaming(source, importObject);
         }
 
         fetch('config.json')
             .then((response) => response.json())
-            .then((config) => {
-                console.log("BFH config", config);
-                window.bfh_config = config;
+            .then((bfh_config) => {
+                console.log("BFH config", bfh_config);
+                window.bfh_config = bfh_config;
 
-                window.gameInstance = UnityLoader.instantiate("gameContainer", "Build/$$game$$.json", {
-                    Module: { "_$fake_ccall$": x => x, },
+                // instantiation logic taken from:
+                // https://gist.github.com/davidjmcclelland/09b25b6baf6e0b09070c307d765b9f91
+
+                let config = {
+                    dataUrl: '$$data$$.data',
+                    frameworkUrl: '$$framework$$.js',
+                    codeUrl: '$$code$$.wasm',
+                    showBanner: function () { console.log("unity banner", arguments); },
+
+                    // identity function to convert between numbers and strings
+                    "_$fake_ccall$": x => x,
+
+                    preRun: [function (mod) {
+                        window.gameModule = mod;
+                        console.log("preRun", arguments);
+                    }],
+                    postRun: [function (mod) { console.log("postRun", arguments); }],
+                };
+
+                createUnityInstance(document.querySelector("#unity-canvas"), config, (progress) => {
+                    // console.log("unity progress", progress);
+                }).then((unityInstance) => {
+                    console.log("unity loaded", unityInstance);
+                }).catch((message) => {
+                    alert(message);
                 });
-                console.log("Game instance created", window.gameInstance);
             })
     </script>
+    <button onclick="window.gameModule.SetFullscreen(true);">Fullscreen</button>
 </body>
 
 </html>
