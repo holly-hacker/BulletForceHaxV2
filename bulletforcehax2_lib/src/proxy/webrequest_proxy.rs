@@ -59,7 +59,7 @@ async fn web_request_proxy(
 
     let proxied_uri = hyper::Uri::from_str(proxied_uri)?;
 
-    if proxied_uri.host() == Some("pref-events.cloud.unity3d.com")
+    if proxied_uri.host() == Some("perf-events.cloud.unity3d.com")
         || proxied_uri.host() == Some("cdp.cloud.unity3d.com")
     {
         debug!("Preventing unity logging");

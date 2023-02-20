@@ -39,10 +39,13 @@
                 if (name == '_JS_Eval_EvalJS') {
                     imports.a[fn] = (arg) => { console.log("EVAL JS", ptr_to_str(arg)) };
                 }
-                
-                // _JS_Log_Dump
+
                 if (name == '_JS_Log_Dump') {
                     imports.a[fn] = (arg) => { console.log("_JS_Log_Dump", ptr_to_str(arg)) };
+                }
+
+                if (name == '_JS_Log_StackTrace') {
+                    imports.a[fn] = function (arg) { console.log("_JS_Log_StackTrace", ptr_to_str(arg)/*, window.gameModule.stackTrace() */); };
                 }
 
                 if (bfh_config.hax) {
