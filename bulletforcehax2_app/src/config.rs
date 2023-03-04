@@ -121,7 +121,8 @@ pub fn get_config() -> Config {
         .unwrap_or(&config.config_file);
     let config_file = std::fs::read(config_path).ok();
     let file_config = config_file
-        .and_then(|v| toml::from_slice(&v).ok())
+        .map(|x| String::from_utf8_lossy(&x).to_string())
+        .and_then(|v| toml::from_str(&v).ok())
         .unwrap_or_default();
 
     config
