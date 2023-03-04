@@ -11,6 +11,7 @@ const ARG_GAME_DIR: Opt<&str> = opt("game-files", "bfhax_data/game_files");
 const ARG_LOG_DIR: Opt<&str> = opt("logs", "bfhax_data/logs");
 const ARG_OPEN_DEVTOOLS: Opt<bool> = opt("open-devtools", false);
 const ARG_HAX: Opt<bool> = opt("hax", false);
+const ARG_HAX_HTTP: Opt<bool> = opt("hax-http", false);
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Config {
@@ -21,6 +22,7 @@ pub struct Config {
     pub log_dir: PathBuf,
     pub open_devtools: bool,
     pub hax: bool,
+    pub hax_http: bool,
 }
 
 struct Opt<T> {
@@ -48,6 +50,8 @@ pub struct PartialConfig {
     pub open_devtools: Option<bool>,
     #[serde(rename = "hax")]
     pub hax: Option<bool>,
+    #[serde(rename = "hax_http")]
+    pub hax_http: Option<bool>,
 }
 
 impl Config {
@@ -60,6 +64,7 @@ impl Config {
             log_dir: new.log_dir.unwrap_or(self.log_dir),
             open_devtools: new.open_devtools.unwrap_or(self.open_devtools),
             hax: new.hax.unwrap_or(self.hax),
+            hax_http: new.hax_http.unwrap_or(self.hax_http),
         }
     }
 }
@@ -74,6 +79,7 @@ impl Default for Config {
             log_dir: PathBuf::from(ARG_LOG_DIR.value),
             open_devtools: ARG_OPEN_DEVTOOLS.value,
             hax: ARG_HAX.value,
+            hax_http: ARG_HAX_HTTP.value,
         }
     }
 }
@@ -96,6 +102,8 @@ impl From<ArgMatches> for PartialConfig {
             }),
             hax: (matches.value_source(ARG_HAX.name) == Some(ValueSource::CommandLine))
                 .then(|| matches.get_one::<bool>(ARG_HAX.name).cloned().unwrap()),
+            hax_http: (matches.value_source(ARG_HAX_HTTP.name) == Some(ValueSource::CommandLine))
+                .then(|| matches.get_one::<bool>(ARG_HAX_HTTP.name).cloned().unwrap()),
         }
     }
 }
@@ -144,6 +152,13 @@ fn build_command() -> Command {
             Arg::new(ARG_HAX.name)
                 .long(ARG_HAX.name)
                 .help("Enable cheat functionality.")
+                .required(false)
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new(ARG_HAX_HTTP.name)
+                .long(ARG_HAX_HTTP.name)
+                .help("Enable HTTP proxy.")
                 .required(false)
                 .action(ArgAction::SetTrue),
         )
