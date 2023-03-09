@@ -11,7 +11,7 @@ const ARG_GAME_DIR: Opt<&str> = opt("game-files", "bfhax_data/game_files");
 const ARG_LOG_DIR: Opt<&str> = opt("logs", "bfhax_data/logs");
 const ARG_OPEN_DEVTOOLS: Opt<bool> = opt("open-devtools", false);
 const ARG_HAX: Opt<bool> = opt("hax", false);
-const ARG_HAX_HTTP: Opt<bool> = opt("hax-http", false);
+const ARG_HAX_HTTP: Opt<bool> = opt("no-hax-http", true);
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Config {
@@ -50,7 +50,7 @@ pub struct PartialConfig {
     pub open_devtools: Option<bool>,
     #[serde(rename = "hax")]
     pub hax: Option<bool>,
-    #[serde(rename = "hax_http")]
+    #[serde(rename = "hax-http")]
     pub hax_http: Option<bool>,
 }
 
@@ -159,9 +159,9 @@ fn build_command() -> Command {
         .arg(
             Arg::new(ARG_HAX_HTTP.name)
                 .long(ARG_HAX_HTTP.name)
-                .help("Enable HTTP proxy.")
+                .help("Disable HTTP proxy.")
                 .required(false)
-                .action(ArgAction::SetTrue),
+                .action(ArgAction::SetFalse),
         )
         .arg(
             Arg::new(ARG_PROFILE_DIR.name)

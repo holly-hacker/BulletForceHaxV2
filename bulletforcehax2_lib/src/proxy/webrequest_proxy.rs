@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use futures_util::lock::Mutex;
 use hyper::body::to_bytes;
-use hyper::header::CONTENT_TYPE;
+use hyper::header::{CONTENT_TYPE, USER_AGENT};
 use hyper::{Body, Client, Request, Response};
 use tower::util::BoxCloneService;
 use tower::{Service, ServiceBuilder, ServiceExt};
@@ -82,6 +82,9 @@ async fn web_request_proxy(
 
     if let Some(content_type) = parts_req.headers.get(CONTENT_TYPE) {
         builder = builder.header(CONTENT_TYPE, content_type);
+    }
+    if let Some(user_agent) = parts_req.headers.get(USER_AGENT) {
+        builder = builder.header(USER_AGENT, user_agent);
     }
 
     let req = builder.body(body_bytes.into())?;
