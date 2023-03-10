@@ -1,5 +1,6 @@
 mod config;
 mod utils;
+mod version_management;
 
 use axum::{
     body::Body,
@@ -7,9 +8,12 @@ use axum::{
     routing::get,
     Router,
 };
+use config::Config;
 use include_dir::Dir;
 use std::net::SocketAddr;
-use tracing::{debug, info};
+use tracing::{debug, error, info};
+
+use crate::version_management::VersionConfig;
 
 static DIST_DIR: Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/../dist");
 
@@ -22,6 +26,21 @@ async fn main() {
     let _guard = utils::init_logging(&config);
     debug!(config = format!("{config:?}"), "Loaded config");
 
+    // get cached game version, or download it if uncached
+    let _version_info = match VersionConfig::get_or_download(&config.game_dir).await {
+        Ok(x) => x,
+        Err(e) => {
+            error!("Error while trying to get game info: {e:?}");
+            return;
+        }
+    };
+
+    // run the http server
+    // this serves the web ui and will host the proxy endpoints
+    run_server(&config).await
+}
+
+async fn run_server(config: &Config) {
     let router = Router::new()
         .route("/test-api", get(test))
         .fallback_service(get(|req: Request<Body>| async move {

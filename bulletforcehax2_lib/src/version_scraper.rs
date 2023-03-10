@@ -13,7 +13,7 @@ const CG_FRAME_URL: &str = "https://games.crazygames.com/en_US/bullet-force-mult
 const CG_JSON_PATTERN: &str = "(?m)^var options = (.+);$";
 
 /// Describes the role of a downloading file.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum FileType {
     UnityLoader,
     Framework,
@@ -158,14 +158,19 @@ where
 
     let mut data = Vec::with_capacity(size_hint.lower() as usize);
 
-    const UPDATE_FREQUENCY: Duration = Duration::from_millis(50);
-    let mut last_progress = Instant::now();
+    const MIN_UPDATE_INTERVAL: Duration = Duration::from_millis(100);
+    const MIN_UPDATE_SIZE: usize = 512 * 1024; // 0.5MB
+    let mut last_progress_time = Instant::now();
+    let mut last_progress_size = 0;
+
     while let Some(next) = response.data().await {
         let next = next.map_err(|e| anyhow!("Error while reading http body: {}", e))?;
         data.extend_from_slice(&next);
 
         let now = Instant::now();
-        if (now - last_progress) > UPDATE_FREQUENCY {
+        if (now - last_progress_time) > MIN_UPDATE_INTERVAL
+            && (data.len() - last_progress_size) > MIN_UPDATE_SIZE
+        {
             tx.send(ProgressReport::Progress {
                 file_type,
                 name: name.to_string(),
@@ -177,7 +182,8 @@ where
             .context("progress send")
             .unwrap();
 
-            last_progress = now;
+            last_progress_time = now;
+            last_progress_size = data.len();
         }
     }
 
