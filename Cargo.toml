@@ -1,11 +1,8 @@
 workspace.members = [
     "photon_lib",
     "bulletforcehax2_lib",
-    "bulletforcehax2_ui",
-    "bulletforcehax2_app",
     "bulletforcehax2_server",
     "bulletforcehax2_web",
-    "tao_egui",
 ]
 
 [profile.release-publish]

@@ -18,6 +18,6 @@ tokio = "1.26"
 tokio-tungstenite = { version = "0.18", features = ["native-tls"] }
 hyper-tungstenite = "0.9"
 tower = { version = "0.4", features = ["util"] }
-tower-http = { version = "0.3", features = ["cors", "decompression-br"] } # NOTE: CrazyGames downloader requires decompression-br feature
+tower-http = { version = "0.4", features = ["cors", "decompression-br"] } # NOTE: CrazyGames downloader requires decompression-br feature
 tracing = "0.1"
 futures = "0.3"
