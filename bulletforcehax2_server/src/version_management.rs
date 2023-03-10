@@ -138,7 +138,7 @@ async fn do_download(base_path: &Path) -> anyhow::Result<VersionConfig> {
         framework: framework.context("did not find framework file")?,
     };
 
-    config.write_to_directory(&base_path)?;
+    config.write_to_directory(base_path)?;
 
     Ok(config)
 }
