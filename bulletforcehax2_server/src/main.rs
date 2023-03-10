@@ -1,4 +1,5 @@
-use std::net::SocketAddr;
+mod config;
+mod utils;
 
 use axum::{
     body::Body,
@@ -7,12 +8,19 @@ use axum::{
     Router,
 };
 use include_dir::Dir;
+use std::net::SocketAddr;
+use tracing::{debug, info};
 
 static DIST_DIR: Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/../dist");
 
 #[tokio::main]
 async fn main() {
-    println!("Hello, world!");
+    // read config from cli args
+    let config = config::get_config();
+
+    // initialize logging
+    let _guard = utils::init_logging(&config);
+    debug!(config = format!("{config:?}"), "Loaded config");
 
     let router = Router::new()
         .route("/test-api", get(test))
@@ -20,9 +28,9 @@ async fn main() {
             load_from_disk(req).await
         }));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([127, 0, 0, 1], config.port));
 
-    println!("binding on {addr}");
+    info!("binding on http://{addr}");
     axum::Server::bind(&addr)
         .serve(router.into_make_service())
         .await
