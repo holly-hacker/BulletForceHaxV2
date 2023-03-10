@@ -44,7 +44,7 @@ async fn run_server(config: Config, version_config: VersionConfig) {
         .layer(Extension(Arc::new(config)))
         .layer(Extension(Arc::new(version_config)));
 
-    info!("binding on http://{addr}");
+    info!("binding on http://localhost:{}", addr.port());
     axum::Server::bind(&addr)
         .serve(router.into_make_service())
         .await

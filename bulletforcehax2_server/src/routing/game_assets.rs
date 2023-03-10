@@ -6,7 +6,7 @@ use axum::{
     http::{header, HeaderMap, StatusCode},
     Extension,
 };
-use tokio::io::AsyncRead;
+use tokio::io::{AsyncRead, BufStream};
 use tokio_util::io::ReaderStream;
 
 use crate::version_management::VersionConfig;
@@ -57,6 +57,7 @@ pub async fn handle(
     let file = tokio::fs::File::open(path)
         .await
         .expect("read game asset from disk");
+    let file = BufStream::with_capacity(1024 * 1024, 1024 * 1024, file);
     let file: Box<dyn AsyncRead + Send + Unpin> = Box::new(file);
     let stream = ReaderStream::new(file);
     let body = StreamBody::new(stream);

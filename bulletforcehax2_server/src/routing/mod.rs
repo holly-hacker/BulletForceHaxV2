@@ -1,16 +1,25 @@
 mod game_assets;
 
+use std::sync::Arc;
+
 use axum::{
     body::Body,
     http::{header, Request, Response, StatusCode},
     routing::get,
-    Router,
+    Extension, Json, Router,
 };
+
+use crate::config::Config;
 
 pub fn get_router() -> Router {
     Router::new()
+        .route("/config.json", get(get_config))
         .route("/game_assets/:file", get(game_assets::handle))
         .fallback_service(get(serve_frontend))
+}
+
+async fn get_config(Extension(config): Extension<Arc<Config>>) -> Json<Config> {
+    Json((*config).clone())
 }
 
 async fn serve_frontend(req: Request<Body>) -> Response<Body> {
