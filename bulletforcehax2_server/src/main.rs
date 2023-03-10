@@ -15,7 +15,7 @@ async fn main() {
     println!("Hello, world!");
 
     let router = Router::new()
-        .route("/test", get(test))
+        .route("/test-api", get(test))
         .fallback_service(get(|req: Request<Body>| async move {
             load_from_disk(req).await
         }));

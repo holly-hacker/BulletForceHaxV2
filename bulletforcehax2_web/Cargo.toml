@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 console_error_panic_hook = "0.1.7"
-log = "0.4.17"
-wasm-logger = "0.2.0"
-yew = { version = "0.20.0", features = ["csr"] }
+log = "0.4"
+wasm-logger = "0.2"
+yew = { version = "0.20", features = ["csr"] }
+yew-router = "0.17"
