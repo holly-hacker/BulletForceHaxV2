@@ -3,7 +3,7 @@
 // `derivative` crate. Clippy does not like this because the (Partial)Eq and Hash function may become out of sync and
 // provide conflicting results. I have verified the current implementations but it seems impossible or annoying to
 // disable this lint for just derive attributes, so we disable it for the entire file.
-#![allow(clippy::derive_hash_xor_eq)]
+#![allow(clippy::derived_hash_with_manual_eq)]
 
 use bytes::{Buf, BufMut};
 use derivative::Derivative;
