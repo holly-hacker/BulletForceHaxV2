@@ -52,7 +52,7 @@ function processWasmImports(imports) {
             }
         }
 
-        if (bfh_config.hax_http) {
+        if (bfh_config.hax && bfh_config.hax_http) {
             if (name == '_JS_WebRequest_Create') {
                 console.log('hooking _JS_WebRequest_Create');
                 let orig_webRequestCreate = imports.a[fn];
