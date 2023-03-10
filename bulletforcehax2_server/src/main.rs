@@ -8,6 +8,7 @@ use std::{net::SocketAddr, sync::Arc};
 use axum::Extension;
 use config::Config;
 use include_dir::Dir;
+use tower_http::cors::{Any, CorsLayer};
 use tracing::{debug, error, info};
 
 use crate::{routing::get_router, version_management::VersionConfig};
@@ -41,6 +42,7 @@ async fn run_server(config: Config, version_config: VersionConfig) {
     let addr = SocketAddr::from(([127, 0, 0, 1], config.port));
 
     let router = get_router()
+        .layer(CorsLayer::permissive())
         .layer(Extension(Arc::new(config)))
         .layer(Extension(Arc::new(version_config)));
 
