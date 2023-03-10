@@ -8,7 +8,7 @@ use std::{net::SocketAddr, sync::Arc};
 use axum::Extension;
 use config::Config;
 use include_dir::Dir;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::CorsLayer;
 use tracing::{debug, error, info};
 
 use crate::{routing::get_router, version_management::VersionConfig};
