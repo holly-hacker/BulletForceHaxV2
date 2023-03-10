@@ -15,14 +15,17 @@ use tracing::{trace, warn};
 
 use crate::{protocol::player_script::PlayerScript, proxy::websocket_proxy::WebSocketProxy};
 
+/// Exclusive, thread-safe access to [HaxState].
+pub type HaxSharedState = Arc<futures_util::lock::Mutex<HaxState>>;
+
 /// An instance of BulletForceHaxV2. It handles the webrequest and websocket proxies as well as the internal state.
 #[derive(Default)]
 pub struct BulletForceHax {
-    state: Arc<futures_util::lock::Mutex<HaxState>>,
+    state: HaxSharedState,
 }
 
 impl BulletForceHax {
-    pub fn get_state(&self) -> Arc<futures_util::lock::Mutex<HaxState>> {
+    pub fn get_state(&self) -> HaxSharedState {
         self.state.clone()
     }
 }

@@ -1,9 +1,7 @@
 use std::convert::Infallible;
 use std::str::FromStr;
-use std::sync::Arc;
 
 use anyhow::Result;
-use futures_util::lock::Mutex;
 use hyper::body::to_bytes;
 use hyper::header::{CONTENT_TYPE, USER_AGENT};
 use hyper::{Body, Client, Request, Response};
@@ -13,10 +11,10 @@ use tower_http::cors::CorsLayer;
 use tower_http::decompression::DecompressionLayer;
 use tracing::{debug, error, trace, warn};
 
-use crate::hax::HaxState;
+use crate::hax::{HaxSharedState, HaxState};
 
 pub fn create_service(
-    shared_state: Arc<Mutex<HaxState>>,
+    shared_state: HaxSharedState,
 ) -> BoxCloneService<Request<Body>, Response<Body>, Infallible> {
     let service = ServiceBuilder::new()
         .layer(CorsLayer::permissive())
@@ -28,7 +26,7 @@ pub fn create_service(
 #[tracing::instrument(name = "WebRequestProxy", level = "info", skip_all, fields(uri = req.uri().query().unwrap_or("")))]
 async fn web_request_proxy_service(
     req: Request<Body>,
-    state: Arc<Mutex<HaxState>>,
+    state: HaxSharedState,
 ) -> Result<Response<Body>, Infallible> {
     match web_request_proxy(req, state).await {
         Ok(r) => Ok(r),
@@ -44,7 +42,7 @@ async fn web_request_proxy_service(
 
 async fn web_request_proxy(
     req: Request<Body>,
-    state: Arc<Mutex<HaxState>>,
+    state: HaxSharedState,
 ) -> anyhow::Result<Response<Body>> {
     debug!("Received {} request", req.method());
     let (parts_req, body) = req.into_parts();

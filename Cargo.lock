@@ -76,6 +76,7 @@ checksum = "8582122b8edba2af43eaf6b80dbfd33f421b5a0eb3a3113d21bc096ac5b44faf"
 dependencies = [
  "async-trait",
  "axum-core",
+ "base64 0.21.0",
  "bitflags",
  "bytes",
  "futures-util",
@@ -93,8 +94,10 @@ dependencies = [
  "serde_json",
  "serde_path_to_error",
  "serde_urlencoded",
+ "sha1",
  "sync_wrapper",
  "tokio",
+ "tokio-tungstenite",
  "tower",
  "tower-http",
  "tower-layer",
@@ -123,6 +126,12 @@ name = "base64"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
+
+[[package]]
+name = "base64"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4a4ddaa51a5bc52a6948f74c06d20aaaddb71924eab79b8c97a8c556e942d6a"
 
 [[package]]
 name = "bincode"
@@ -1447,6 +1456,7 @@ dependencies = [
  "include_dir",
  "serde",
  "serde_json",
+ "shared",
  "time",
  "tokio",
  "tokio-util",
@@ -1475,6 +1485,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "900fba806f70c630b0a382d0d825e17a0f19fcd059a2ade1ff237bcddf446b31"
 dependencies = [
  "lazy_static",
+]
+
+[[package]]
+name = "shared"
+version = "0.0.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -1878,7 +1895,7 @@ version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "30ee6ab729cd4cf0fd55218530c4522ed30b7b6081752839b68fcec8d0960788"
 dependencies = [
- "base64",
+ "base64 0.13.1",
  "byteorder",
  "bytes",
  "http",
@@ -2053,6 +2070,7 @@ version = "0.0.0"
 dependencies = [
  "console_error_panic_hook",
  "log",
+ "shared",
  "wasm-logger",
  "yew",
  "yew-router",
