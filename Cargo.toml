@@ -3,6 +3,7 @@ workspace.members = [
     "bulletforcehax2_lib",
     "bulletforcehax2_server",
     "bulletforcehax2_web",
+    "bulletforcehax2_shared",
 ]
 
 [profile.release-publish]

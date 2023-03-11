@@ -1,14 +1,15 @@
+use shared::HaxStateNetwork;
 use yew::{html, Component, Html};
 
 use crate::hax_ipc::HaxIpc;
 
 pub struct HaxPage {
     ipc: HaxIpc,
-    data: String,
+    data: Option<HaxStateNetwork>,
 }
 
 pub enum HaxPageMsg {
-    DataReceived(String),
+    DataReceived(HaxStateNetwork),
     SendData(String),
 }
 
@@ -20,7 +21,7 @@ impl Component for HaxPage {
         let on_message = ctx.link().callback(HaxPageMsg::DataReceived);
         Self {
             ipc: HaxIpc::new_connect(on_message),
-            data: "initial data".into(),
+            data: None,
         }
     }
 
@@ -30,8 +31,7 @@ impl Component for HaxPage {
             .callback(|x| HaxPageMsg::SendData(format!("clicked button: {x:?}")));
         html! {
             <>
-                {format!("data: {}", self.data)}
-                <br/>
+                <pre>{format!("data: {:#?}", self.data)}</pre>
                 <button {onclick}>{"Click me"}</button>
             </>
         }
@@ -40,7 +40,7 @@ impl Component for HaxPage {
     fn update(&mut self, _ctx: &yew::Context<Self>, msg: Self::Message) -> bool {
         match msg {
             HaxPageMsg::DataReceived(data) => {
-                self.data = data;
+                self.data = Some(data);
                 true
             }
             HaxPageMsg::SendData(data) => {

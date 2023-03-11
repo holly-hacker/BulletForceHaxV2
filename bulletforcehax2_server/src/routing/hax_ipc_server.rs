@@ -41,10 +41,12 @@ async fn read(mut receiver: SplitStream<WebSocket>, _hax_state: HaxSharedState) 
 }
 
 async fn write(mut sender: SplitSink<WebSocket, Message>, _hax_state: HaxSharedState) {
-    for i in 0.. {
-        info!("Sending item {i}");
+    loop {
+        let state = _hax_state.lock().await.copy_to_network_state();
+        let state_bytes = postcard::to_allocvec(&state).expect("serialize state");
+
         sender
-            .send(Message::Text(format!("hello, world! {i}")))
+            .send(Message::Binary(state_bytes))
             .await
             .expect("send item over websocket");
         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;

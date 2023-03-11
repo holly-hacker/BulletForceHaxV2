@@ -1,5 +1,7 @@
 //! High-level representations of photon messages.
 
+use serde::{Deserialize, Serialize};
+
 pub use super::structs_impl::*;
 use crate::highlevel::constants::{actor_properties, game_property_key, parameter_code};
 #[allow(unused)]
@@ -8,7 +10,7 @@ use crate::photon_data_type::{CustomData, PhotonDataType};
 use crate::PhotonHashmap;
 
 /// Represents a Photon View ID
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ViewId(pub i32);
 
 // NOTE: be very cautious when applying `@required`, parsing will fail if it is not present!

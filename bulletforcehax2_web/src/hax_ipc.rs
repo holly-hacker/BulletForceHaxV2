@@ -3,7 +3,8 @@ use std::{cell::RefCell, rc::Rc};
 use futures::{SinkExt, StreamExt};
 use gloo_net::websocket::{futures::WebSocket, Message};
 use gloo_timers::future::TimeoutFuture;
-use log::info;
+use log::{info, trace};
+use shared::HaxStateNetwork;
 use yew::{platform::spawn_local, Callback};
 
 pub struct HaxIpc {
@@ -11,7 +12,7 @@ pub struct HaxIpc {
 }
 
 impl HaxIpc {
-    pub fn new_connect(callback: Callback<String>) -> Self {
+    pub fn new_connect(callback: Callback<HaxStateNetwork>) -> Self {
         let window = web_sys::window().expect("get window object");
         let host = window.location().host().expect("get origin");
         let url = format!("ws://{host}/hax/ws");
@@ -23,9 +24,11 @@ impl HaxIpc {
         // handle incoming messages
         spawn_local(async move {
             while let Some(msg) = read.next().await {
-                info!("WS message: {msg:?}");
-                if let Ok(Message::Text(msg)) = msg {
-                    callback.emit(msg);
+                trace!("WS message: {msg:?}");
+                if let Ok(Message::Bytes(bytes)) = msg {
+                    let parsed: HaxStateNetwork =
+                        postcard::from_bytes(&bytes).expect("parse incoming data");
+                    callback.emit(parsed);
                 };
             }
             info!("WebSocket Closed")

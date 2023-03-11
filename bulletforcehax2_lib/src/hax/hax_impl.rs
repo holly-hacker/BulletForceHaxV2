@@ -14,11 +14,12 @@ use photon_lib::{
     photon_data_type::PhotonDataType,
     photon_message::PhotonMessage,
 };
+use shared::VersionInfo;
 use tracing::{debug, trace, warn};
 
-use super::{HaxSharedState, VersionInfo};
+use super::{merge_instantiation_data, merge_player, HaxSharedState};
 use crate::{
-    hax::{HaxState, PlayerActor},
+    hax::{merge_player_script, HaxState, PlayerActor},
     protocol::{player_script::PlayerScript, rpc::get_rpc_method_name},
     proxy::{Direction, WebSocketServer},
 };
@@ -142,9 +143,9 @@ impl HaxState {
                     let (strip_passwords, show_mobile, show_all_versions, game_version) = {
                         let hax = futures::executor::block_on(hax.lock());
                         (
-                            hax.strip_passwords,
-                            hax.show_mobile_games,
-                            hax.show_other_versions,
+                            hax.features.strip_passwords,
+                            hax.features.show_mobile_games,
+                            hax.features.show_other_versions,
                             hax.global_state.version.clone(),
                         )
                     };
@@ -234,11 +235,11 @@ impl HaxState {
                             };
 
                             if let Some(player) = state.players.get_mut(&actor) {
-                                player.merge_player(&player_props);
+                                merge_player(player, &player_props);
                             }
 
                             if let (Some(nick), (true, new_nick)) =
-                                (&mut player_props.nickname, &hax.spoofed_name)
+                                (&mut player_props.nickname, &hax.features.spoofed_name)
                             {
                                 *nick = new_nick.clone();
 
@@ -322,7 +323,7 @@ impl HaxState {
                                             "SendSerialize for actor"
                                         );
 
-                                        actor.merge_player_script(&player_script);
+                                        merge_player_script(actor, &player_script);
                                     }
                                     trace!(
                                         direction = "client",
@@ -391,7 +392,7 @@ impl HaxState {
                             let mut actor = PlayerActor::default();
 
                             let player = Player::from_map(&mut actor_props.clone())?;
-                            actor.merge_player(&player);
+                            merge_player(&mut actor, &player);
 
                             debug!(actor_id, "Found new actor");
                             state.players.insert(actor_id, actor);
@@ -474,7 +475,7 @@ impl HaxState {
 
                         let player_props = Player::from_map(&mut event.properties)?;
 
-                        player.merge_player(&player_props);
+                        merge_player(player, &player_props);
                     }
                 }
                 // NOTE: this only destroys the game object
@@ -525,7 +526,7 @@ impl HaxState {
                                 "SendSerialize for actor"
                             );
 
-                            actor.merge_player_script(&player_script);
+                            merge_player_script(actor, &player_script);
                         }
                         trace!(
                             direction = "client",
@@ -580,7 +581,7 @@ fn merge_instantiation(
     match event_data.prefab_name.as_ref() {
         "PlayerBody" => {
             let x = state.players.entry(sender).or_default();
-            x.merge_instantiation_data(event_data);
+            merge_instantiation_data(x, event_data);
         }
         "Match Manager" => {
             state.match_manager_view_id = Some(event_data.instantiation_id);
