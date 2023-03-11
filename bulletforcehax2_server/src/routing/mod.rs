@@ -1,4 +1,5 @@
 mod game_assets;
+mod hax_ipc_server;
 
 use std::sync::Arc;
 
@@ -14,6 +15,7 @@ use crate::config::Config;
 pub fn get_router() -> Router {
     Router::new()
         .route("/config.json", get(get_config))
+        .route("/hax/ws", get(hax_ipc_server::handle))
         .route("/game_assets/:file", get(game_assets::handle))
         .fallback_service(get(serve_frontend))
 }

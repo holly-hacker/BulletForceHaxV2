@@ -3,6 +3,7 @@ use ui::{HaxPage, NotFoundPage, PlayPage};
 use yew::prelude::*;
 use yew_router::{BrowserRouter, Routable, Switch};
 
+mod hax_ipc;
 mod ui;
 
 fn main() {

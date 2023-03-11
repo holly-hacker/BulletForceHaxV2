@@ -1453,6 +1453,7 @@ dependencies = [
  "bulletforcehax2_lib",
  "bytesize",
  "clap",
+ "futures-util",
  "include_dir",
  "serde",
  "serde_json",
@@ -2069,9 +2070,13 @@ name = "web"
 version = "0.0.0"
 dependencies = [
  "console_error_panic_hook",
+ "futures",
+ "gloo-net",
+ "gloo-timers",
  "log",
  "shared",
  "wasm-logger",
+ "web-sys",
  "yew",
  "yew-router",
 ]
