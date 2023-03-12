@@ -24,3 +24,7 @@ build-frontend:
 
 run: build-frontend
     cargo run -p server
+
+build-release:
+    cd bulletforcehax2_web && trunk build --release
+    cargo build -p server --profile release-publish
