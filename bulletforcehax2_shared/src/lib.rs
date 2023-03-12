@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use photon_lib::{highlevel::structs::ViewId, primitives::Vector3};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct HaxStateNetwork {
     pub global_state: GlobalState,
     pub features: FeatureState,
@@ -13,13 +13,13 @@ pub struct HaxStateNetwork {
 }
 
 /// Game-related state that is kept over the lifetime of the program.
-#[derive(Serialize, Deserialize, Default, Debug, Clone)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
 pub struct GlobalState {
     pub user_id: Option<String>,
     pub version: Option<VersionInfo>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct VersionInfo {
     /// The version of the game.
     pub game_version: String,
@@ -28,11 +28,11 @@ pub struct VersionInfo {
 }
 
 /// State for a given lobby connection
-#[derive(Serialize, Deserialize, Default, Debug, Clone)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
 pub struct LobbyState {}
 
 /// State for a given game connection
-#[derive(Serialize, Deserialize, Default, Debug, Clone)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq)]
 pub struct GameplayState {
     /// the player id
     pub player_id: Option<i32>,
@@ -48,7 +48,7 @@ pub struct GameplayState {
     pub players: IndexMap<i32, PlayerActor>,
 }
 
-#[derive(Serialize, Deserialize, Default, Debug, Clone)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
 pub struct FeatureState {
     pub show_mobile_games: bool,
     pub show_other_versions: bool,
@@ -56,7 +56,7 @@ pub struct FeatureState {
     pub spoofed_name: (bool, String),
 }
 
-#[derive(Serialize, Deserialize, Default, Clone, Debug)]
+#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
 pub struct PlayerActor {
     pub view_id: Option<ViewId>,
     pub user_id: Option<String>,

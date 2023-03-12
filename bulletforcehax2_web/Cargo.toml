@@ -15,5 +15,6 @@ postcard = "1"
 shared = { path = "../bulletforcehax2_shared" }
 wasm-logger = "0.2"
 web-sys = { version = "0.3", features = ["Window", "Location"] }
+ybc = "0.4.0-beta.0"
 yew = { version = "0.20", features = ["csr"] }
 yew-router = "0.17"

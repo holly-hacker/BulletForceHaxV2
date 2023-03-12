@@ -1,11 +1,15 @@
-use shared::HaxStateNetwork;
-use yew::{html, Component, Html};
+mod hax_menu;
 
-use crate::hax_ipc::HaxIpc;
+use std::rc::Rc;
+
+use shared::HaxStateNetwork;
+use yew::{html, Component, ContextProvider, Html};
+
+use crate::{hax_ipc::HaxIpc, ui::hax::hax_menu::HaxMenu};
 
 pub struct HaxPage {
     ipc: HaxIpc,
-    data: Option<HaxStateNetwork>,
+    data: Option<Rc<HaxStateNetwork>>,
 }
 
 pub enum HaxPageMsg {
@@ -25,14 +29,14 @@ impl Component for HaxPage {
         }
     }
 
-    fn view(&self, ctx: &yew::Context<Self>) -> Html {
-        let onclick = ctx
-            .link()
-            .callback(|x| HaxPageMsg::SendData(format!("clicked button: {x:?}")));
+    fn view(&self, _ctx: &yew::Context<Self>) -> Html {
         html! {
             <>
-                <pre>{format!("data: {:#?}", self.data)}</pre>
-                <button {onclick}>{"Click me"}</button>
+                if let Some(hax) = &self.data {
+                    <ContextProvider<Rc<HaxStateNetwork>> context={hax.clone()}>
+                        <HaxMenu />
+                    </ContextProvider<Rc<HaxStateNetwork>>>
+                }
             </>
         }
     }
@@ -40,7 +44,7 @@ impl Component for HaxPage {
     fn update(&mut self, _ctx: &yew::Context<Self>, msg: Self::Message) -> bool {
         match msg {
             HaxPageMsg::DataReceived(data) => {
-                self.data = Some(data);
+                self.data = Some(Rc::new(data));
                 true
             }
             HaxPageMsg::SendData(data) => {
