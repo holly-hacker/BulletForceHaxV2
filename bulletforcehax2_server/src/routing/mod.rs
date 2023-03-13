@@ -1,14 +1,19 @@
 mod game_assets;
 mod hax_ipc_server;
 
+#[cfg(not(feature = "read-from-disk"))]
+mod web_assets;
+
+#[cfg(feature = "read-from-disk")]
+mod web_assets_live;
+
 use std::sync::Arc;
 
-use axum::{
-    body::Body,
-    http::{header, Request, Response, StatusCode},
-    routing::get,
-    Extension, Json, Router,
-};
+use axum::{routing::get, Extension, Json, Router};
+#[cfg(not(feature = "read-from-disk"))]
+use web_assets::serve;
+#[cfg(feature = "read-from-disk")]
+use web_assets_live::serve;
 
 use crate::config::Config;
 
@@ -17,38 +22,9 @@ pub fn get_router() -> Router {
         .route("/config.json", get(get_config))
         .route("/hax/ws", get(hax_ipc_server::handle))
         .route("/game_assets/:file", get(game_assets::handle))
-        .fallback_service(get(serve_frontend))
+        .fallback_service(get(serve))
 }
 
 async fn get_config(Extension(config): Extension<Arc<Config>>) -> Json<Config> {
     Json((*config).clone())
-}
-
-async fn serve_frontend(req: Request<Body>) -> Response<Body> {
-    let path = req.uri().path().trim_start_matches('/');
-
-    let file = crate::DIST_DIR.get_file(path);
-
-    let Some(file) = file else {
-        // file not found, serving index file and let client-side router take care of it
-        return Response::builder()
-            .status(StatusCode::OK)
-            .header(header::CONTENT_TYPE, "text/html")
-            .body(Body::from(crate::DIST_DIR.get_file("index.html").expect("read index file").contents()))
-            .expect("response");
-    };
-
-    let content_type = match path.split('.').last() {
-        Some("wasm") => "application/wasm",
-        Some("html") => "text/html",
-        Some("js") => "application/javascript",
-        Some("css") => "text/css",
-        _ => "text/plain",
-    };
-
-    Response::builder()
-        .status(StatusCode::OK)
-        .header(header::CONTENT_TYPE, content_type)
-        .body(Body::from(file.contents()))
-        .expect("response")
 }

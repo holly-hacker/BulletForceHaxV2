@@ -8,13 +8,10 @@ use std::{net::SocketAddr, sync::Arc};
 use axum::{routing::any_service, Extension};
 use bulletforcehax2_lib::hax::BulletForceHax;
 use config::Config;
-use include_dir::Dir;
 use tower_http::cors::CorsLayer;
 use tracing::{debug, error, info};
 
 use crate::{routing::get_router, version_management::VersionConfig};
-
-static DIST_DIR: Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/../dist");
 
 #[tokio::main]
 async fn main() {

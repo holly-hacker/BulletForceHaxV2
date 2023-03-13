@@ -22,6 +22,9 @@ check:
 build-frontend:
     cd bulletforcehax2_web && trunk build
 
+watch-frontend:
+    cd bulletforcehax2_web && trunk watch
+
 run: build-frontend
     cargo run -p server
 
