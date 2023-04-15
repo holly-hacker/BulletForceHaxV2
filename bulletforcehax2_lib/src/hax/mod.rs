@@ -9,7 +9,9 @@ use photon_lib::{
     highlevel::structs::{InstantiationEventData, Player},
     photon_data_type::PhotonDataType,
 };
-use shared::{FeatureState, GameplayState, GlobalState, HaxStateNetwork, LobbyState, PlayerActor};
+use shared::{
+    FeatureSettings, GameplayState, GlobalState, HaxStateUpdate, LobbyState, PlayerActor,
+};
 use tracing::{trace, warn};
 
 use crate::{protocol::player_script::PlayerScript, proxy::websocket_proxy::WebSocketProxy};
@@ -29,22 +31,21 @@ impl BulletForceHax {
     }
 }
 
-/// The internal state.
+/// The full internal state.
 #[derive(Default)]
 pub struct HaxState {
     pub global_state: GlobalState,
-    pub features: FeatureState,
     pub lobby_state: Option<(WebSocketProxy, LobbyState)>,
     pub gameplay_state: Option<(WebSocketProxy, GameplayState)>,
+    pub settings: FeatureSettings,
 }
 
 impl HaxState {
-    pub fn copy_to_network_state(&self) -> HaxStateNetwork {
+    pub fn copy_to_network_update(&self) -> HaxStateUpdate {
         // NOTE: doing this entire copy each time we send state isn't very efficient, since it's not needed.
         // we're only doing it because we need to filter out the websocket proxy objects
-        HaxStateNetwork {
+        HaxStateUpdate {
             global_state: self.global_state.clone(),
-            features: self.features.clone(),
             lobby_state: self.lobby_state.as_ref().map(|x| x.1.clone()),
             gameplay_state: self.gameplay_state.as_ref().map(|x| x.1.clone()),
         }

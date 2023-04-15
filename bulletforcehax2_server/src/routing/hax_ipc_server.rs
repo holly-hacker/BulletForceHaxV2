@@ -11,6 +11,7 @@ use futures_util::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
+use shared::S2CMessage;
 use tracing::info;
 
 pub async fn handle(
@@ -40,10 +41,27 @@ async fn read(mut receiver: SplitStream<WebSocket>, _hax_state: HaxSharedState) 
     }
 }
 
-async fn write(mut sender: SplitSink<WebSocket, Message>, _hax_state: HaxSharedState) {
+// TODO: make this reactive rather than time-based
+async fn write(mut sender: SplitSink<WebSocket, Message>, hax_state: HaxSharedState) {
+    let (state, settings) = {
+        let hax_state = hax_state.lock().await;
+        (
+            hax_state.copy_to_network_update(),
+            hax_state.settings.clone(),
+        )
+    };
+    let message = S2CMessage::InitialState(state, settings);
+    let state_bytes = postcard::to_allocvec(&message).expect("serialize network message");
+
+    sender
+        .send(Message::Binary(state_bytes))
+        .await
+        .expect("send item over websocket");
+
     loop {
-        let state = _hax_state.lock().await.copy_to_network_state();
-        let state_bytes = postcard::to_allocvec(&state).expect("serialize state");
+        let state = hax_state.lock().await.copy_to_network_update();
+        let message = S2CMessage::NewGameState(state);
+        let state_bytes = postcard::to_allocvec(&message).expect("serialize network message");
 
         sender
             .send(Message::Binary(state_bytes))

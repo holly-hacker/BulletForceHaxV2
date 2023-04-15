@@ -4,10 +4,24 @@ use indexmap::IndexMap;
 use photon_lib::{highlevel::structs::ViewId, primitives::Vector3};
 use serde::{Deserialize, Serialize};
 
+/// A message sent from the proxy to the front-end.
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct HaxStateNetwork {
+pub enum S2CMessage {
+    InitialState(HaxStateUpdate, FeatureSettings),
+    NewGameState(HaxStateUpdate),
+}
+
+/// A message sent from the front-end to the proxy.
+#[derive(Serialize, Deserialize, Debug)]
+pub enum C2SMessage {
+    UpdateSettings(FeatureSettings),
+    Command,
+}
+
+/// Game state as it is sent over the network.
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub struct HaxStateUpdate {
     pub global_state: GlobalState,
-    pub features: FeatureState,
     pub lobby_state: Option<LobbyState>,
     pub gameplay_state: Option<GameplayState>,
 }
@@ -48,8 +62,9 @@ pub struct GameplayState {
     pub players: IndexMap<i32, PlayerActor>,
 }
 
+/// The current user-defined settings.
 #[derive(Serialize, Deserialize, Default, Debug, Clone, PartialEq, Eq)]
-pub struct FeatureState {
+pub struct FeatureSettings {
     pub show_mobile_games: bool,
     pub show_other_versions: bool,
     pub strip_passwords: bool,

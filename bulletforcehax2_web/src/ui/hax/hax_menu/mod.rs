@@ -1,11 +1,11 @@
 use std::rc::Rc;
 
-use shared::HaxStateNetwork;
+use shared::HaxStateUpdate;
 use yew::prelude::*;
 
 #[function_component(HaxMenu)]
 pub fn hax_menu() -> Html {
-    let hax = use_context::<Rc<HaxStateNetwork>>().expect("get hax state");
+    let hax = use_context::<Rc<HaxStateUpdate>>().expect("get state update");
     html! {
         <ybc::Container>
             <ybc::Content>

@@ -143,9 +143,9 @@ impl HaxState {
                     let (strip_passwords, show_mobile, show_all_versions, game_version) = {
                         let hax = futures::executor::block_on(hax.lock());
                         (
-                            hax.features.strip_passwords,
-                            hax.features.show_mobile_games,
-                            hax.features.show_other_versions,
+                            hax.settings.strip_passwords,
+                            hax.settings.show_mobile_games,
+                            hax.settings.show_other_versions,
                             hax.global_state.version.clone(),
                         )
                     };
@@ -239,7 +239,7 @@ impl HaxState {
                             }
 
                             if let (Some(nick), (true, new_nick)) =
-                                (&mut player_props.nickname, &hax.features.spoofed_name)
+                                (&mut player_props.nickname, &hax.settings.spoofed_name)
                             {
                                 *nick = new_nick.clone();
 
