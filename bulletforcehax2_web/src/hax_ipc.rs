@@ -4,7 +4,7 @@ use futures::{SinkExt, StreamExt};
 use gloo_net::websocket::{futures::WebSocket, Message};
 use gloo_timers::future::TimeoutFuture;
 use log::{info, trace};
-use shared::S2CMessage;
+use shared::{C2SMessage, S2CMessage};
 use yew::{platform::spawn_local, Callback};
 
 #[derive(PartialEq, Eq)]
@@ -58,7 +58,8 @@ impl HaxIpc {
         Self { write_queue }
     }
 
-    pub fn send(&self, data: String) {
-        self.write_queue.borrow_mut().push(Message::Text(data));
+    pub fn send(&self, data: C2SMessage) {
+        let encoded = postcard::to_allocvec(&data).expect("encode c2s message");
+        self.write_queue.borrow_mut().push(Message::Bytes(encoded));
     }
 }

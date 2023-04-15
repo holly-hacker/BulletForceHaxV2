@@ -19,7 +19,6 @@ pub struct HaxIpcStore(Option<HaxIpc>);
 
 #[function_component(HaxPage)]
 pub fn hax_page() -> Html {
-    // supposedly this callback only gets created once because it depends on `()`
     let (state, state_dispatch) = use_store::<HaxStateStore>();
     let (_, settings_dispatch) = use_store::<HaxSettingsStore>();
     let (_, ipc_dispatch) = use_store::<HaxIpcStore>();
@@ -27,7 +26,7 @@ pub fn hax_page() -> Html {
         let state_dispatch = state_dispatch.clone();
         let settings_dispatch = settings_dispatch.clone();
 
-        let callback = Callback::from(move |msg: S2CMessage| match msg {
+        let message_received_callback = Callback::from(move |msg: S2CMessage| match msg {
             S2CMessage::InitialState(game, settings) => {
                 state_dispatch.set(HaxStateStore(Some(game)));
                 settings_dispatch.set(HaxSettingsStore(Some(settings)));
@@ -36,7 +35,7 @@ pub fn hax_page() -> Html {
                 state_dispatch.set(HaxStateStore(Some(game)));
             }
         });
-        let ipc = HaxIpc::connect(callback);
+        let ipc = HaxIpc::connect(message_received_callback);
         ipc_dispatch.set(HaxIpcStore(Some(ipc)));
     });
 

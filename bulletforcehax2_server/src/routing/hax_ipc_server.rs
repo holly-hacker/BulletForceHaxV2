@@ -11,7 +11,7 @@ use futures_util::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
-use shared::S2CMessage;
+use shared::{C2SMessage, S2CMessage};
 use tracing::info;
 
 pub async fn handle(
@@ -29,13 +29,23 @@ async fn handle_websocket(socket: WebSocket, hax_state: HaxSharedState) {
     tokio::spawn(read(receiver, hax_state));
 }
 
-async fn read(mut receiver: SplitStream<WebSocket>, _hax_state: HaxSharedState) {
+async fn read(mut receiver: SplitStream<WebSocket>, hax_state: HaxSharedState) {
     while let Some(next) = receiver.next().await {
         let next = next.expect("get next message");
         match next {
-            Message::Text(msg) => info!("Received text message: {msg}"),
-            Message::Binary(msg) => info!("Received binary message: {msg:?}"),
-            Message::Close(_) => todo!(),
+            Message::Text(msg) => panic!("Received unexpected text message: {msg}"),
+            Message::Binary(msg) => {
+                let data: C2SMessage = postcard::from_bytes(&msg).unwrap();
+                match data {
+                    C2SMessage::UpdateSettings(settings) => {
+                        info!("Received updated settings from client");
+                        let mut hax_state = hax_state.lock().await;
+                        hax_state.settings = settings;
+                    }
+                    C2SMessage::Command => todo!("command"),
+                }
+            }
+            Message::Close(_) => todo!("on connection close"),
             _ => (),
         }
     }

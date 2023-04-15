@@ -1,12 +1,56 @@
+use shared::C2SMessage;
 use yew::prelude::*;
 use yewdux::prelude::use_store;
 
-use crate::ui::hax::HaxStateStore;
+use crate::ui::hax::{HaxIpcStore, HaxSettingsStore, HaxStateStore};
 
 #[function_component(HaxMenu)]
 pub fn hax_menu() -> Html {
     let (hax, _) = use_store::<HaxStateStore>();
+    let (settings, settings_dispatch) = use_store::<HaxSettingsStore>();
+    let (ipc, _) = use_store::<HaxIpcStore>();
     let hax = hax.0.as_ref().unwrap();
+    let settings = settings.0.as_ref().unwrap();
+    // let ipc = ipc.0.as_ref().unwrap();
+
+    // TODO: spit up into smaller files so we don't have these large chunks of code here
+    let ipc_1 = ipc.clone();
+    let callback_show_mobile_games =
+        settings_dispatch.reduce_callback_with(move |store, event: bool| {
+            let mut new_state = store.0.as_ref().unwrap().clone();
+            new_state.show_mobile_games = event;
+            ipc_1
+                .0
+                .as_ref()
+                .unwrap()
+                .send(C2SMessage::UpdateSettings(new_state.clone()));
+            HaxSettingsStore(Some(new_state)).into()
+        });
+    let ipc_1 = ipc.clone();
+    let callback_show_other_versions =
+        settings_dispatch.reduce_callback_with(move |store, event: bool| {
+            let mut new_state = store.0.as_ref().unwrap().clone();
+            new_state.show_other_versions = event;
+            ipc_1
+                .0
+                .as_ref()
+                .unwrap()
+                .send(C2SMessage::UpdateSettings(new_state.clone()));
+            HaxSettingsStore(Some(new_state)).into()
+        });
+    let ipc_1 = ipc;
+    let callback_strip_passwords =
+        settings_dispatch.reduce_callback_with(move |store, event: bool| {
+            let mut new_state = store.0.as_ref().unwrap().clone();
+            new_state.strip_passwords = event;
+            ipc_1
+                .0
+                .as_ref()
+                .unwrap()
+                .send(C2SMessage::UpdateSettings(new_state.clone()));
+            HaxSettingsStore(Some(new_state)).into()
+        });
+
     html! {
         <ybc::Container>
             <ybc::Content>
@@ -34,7 +78,28 @@ pub fn hax_menu() -> Html {
                 </ul>
 
                 <h3>{"Lobby"}</h3>
-                {"TODO: add options"}
+                <ybc::Control>
+                    <ybc::Checkbox name="test" checked={settings.show_mobile_games} update={callback_show_mobile_games}>
+                        {"Show mobile games"}
+                    </ybc::Checkbox>
+                </ybc::Control>
+
+                <ybc::Control>
+                    <ybc::Checkbox name="test" checked={settings.show_other_versions} update={callback_show_other_versions}>
+                        {"Show versions for other games"}
+                    </ybc::Checkbox>
+                </ybc::Control>
+
+                <ybc::Control>
+                    <ybc::Checkbox name="test" checked=true update={callback_strip_passwords}>
+                        {"Strip passwords"}
+                    </ybc::Checkbox>
+                </ybc::Control>
+
+                <h3>{"Gameplay"}</h3>
+                <ybc::Control>
+                    <ybc::Input name="" value="" update={|_| {}} />
+                </ybc::Control>
 
                 if let Some(state) = &hax.gameplay_state {
                     <h3>{"Info - Players"}</h3>
