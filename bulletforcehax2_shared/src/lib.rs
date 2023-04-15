@@ -19,7 +19,7 @@ pub enum C2SMessage {
 }
 
 /// Game state as it is sent over the network.
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct HaxStateUpdate {
     pub global_state: GlobalState,
     pub lobby_state: Option<LobbyState>,

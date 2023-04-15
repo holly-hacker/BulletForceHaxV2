@@ -1,62 +1,50 @@
 mod hax_menu;
 
-use std::rc::Rc;
-
-use shared::{HaxStateUpdate, S2CMessage};
-use yew::{html, Component, ContextProvider, Html};
+use shared::{FeatureSettings, HaxStateUpdate, S2CMessage};
+use yew::{function_component, html, use_state, Callback, Html};
+use yewdux::{prelude::use_store, store::Store};
 
 use crate::{hax_ipc::HaxIpc, ui::hax::hax_menu::HaxMenu};
 
-pub struct HaxPage {
-    ipc: HaxIpc,
-    game_state: Option<Rc<HaxStateUpdate>>,
-}
+/// A store containing the latest [HaxStateUpdate], if any.
+#[derive(Default, PartialEq, Store)]
+pub struct HaxStateStore(Option<HaxStateUpdate>);
 
-pub enum HaxPageMsg {
-    MessageReceived(S2CMessage),
-    #[allow(unused)]
-    SendData(String),
-}
+/// A store containing the latest [FeatureSettings], if any.
+#[derive(Default, PartialEq, Store)]
+pub struct HaxSettingsStore(Option<FeatureSettings>);
 
-impl Component for HaxPage {
-    type Message = HaxPageMsg;
-    type Properties = ();
+#[derive(Default, PartialEq, Store)]
+pub struct HaxIpcStore(Option<HaxIpc>);
 
-    fn create(ctx: &yew::Context<Self>) -> Self {
-        // bind incoming messages to a component message
-        let message_received_callback = ctx.link().callback(HaxPageMsg::MessageReceived);
-        Self {
-            ipc: HaxIpc::connect(message_received_callback),
-            game_state: None,
-        }
-    }
+#[function_component(HaxPage)]
+pub fn hax_page() -> Html {
+    // supposedly this callback only gets created once because it depends on `()`
+    let (state, state_dispatch) = use_store::<HaxStateStore>();
+    let (_, settings_dispatch) = use_store::<HaxSettingsStore>();
+    let (_, ipc_dispatch) = use_store::<HaxIpcStore>();
+    _ = use_state(|| {
+        let state_dispatch = state_dispatch.clone();
+        let settings_dispatch = settings_dispatch.clone();
 
-    fn view(&self, _ctx: &yew::Context<Self>) -> Html {
-        html! {
-            <>
-                if let Some(hax) = &self.game_state {
-                    <ContextProvider<Rc<HaxStateUpdate>> context={hax.clone()}>
-                        <HaxMenu />
-                    </ContextProvider<Rc<HaxStateUpdate>>>
-                }
-            </>
-        }
-    }
-
-    fn update(&mut self, _ctx: &yew::Context<Self>, msg: Self::Message) -> bool {
-        match msg {
-            HaxPageMsg::MessageReceived(message) => {
-                match message {
-                    S2CMessage::InitialState(game, _) | S2CMessage::NewGameState(game) => {
-                        self.game_state = Some(Rc::new(game))
-                    }
-                }
-                true
+        let callback = Callback::from(move |msg: S2CMessage| match msg {
+            S2CMessage::InitialState(game, settings) => {
+                state_dispatch.set(HaxStateStore(Some(game)));
+                settings_dispatch.set(HaxSettingsStore(Some(settings)));
             }
-            HaxPageMsg::SendData(data) => {
-                self.ipc.send(data);
-                false
+            S2CMessage::NewGameState(game) => {
+                state_dispatch.set(HaxStateStore(Some(game)));
             }
-        }
+        });
+        let ipc = HaxIpc::connect(callback);
+        ipc_dispatch.set(HaxIpcStore(Some(ipc)));
+    });
+
+    html! {
+        <>
+            if state.0.is_some() {
+                <HaxMenu />
+            }
+        </>
     }
 }

@@ -1,11 +1,12 @@
-use std::rc::Rc;
-
-use shared::HaxStateUpdate;
 use yew::prelude::*;
+use yewdux::prelude::use_store;
+
+use crate::ui::hax::HaxStateStore;
 
 #[function_component(HaxMenu)]
 pub fn hax_menu() -> Html {
-    let hax = use_context::<Rc<HaxStateUpdate>>().expect("get state update");
+    let (hax, _) = use_store::<HaxStateStore>();
+    let hax = hax.0.as_ref().unwrap();
     html! {
         <ybc::Container>
             <ybc::Content>

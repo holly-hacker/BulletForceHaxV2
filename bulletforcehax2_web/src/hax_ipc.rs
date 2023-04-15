@@ -7,6 +7,7 @@ use log::{info, trace};
 use shared::S2CMessage;
 use yew::{platform::spawn_local, Callback};
 
+#[derive(PartialEq, Eq)]
 pub struct HaxIpc {
     write_queue: Rc<RefCell<Vec<Message>>>,
 }
