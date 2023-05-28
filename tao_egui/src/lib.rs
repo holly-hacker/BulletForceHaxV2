@@ -9,7 +9,7 @@ use glutin::{
 
 pub struct TaoEguiWindow {
     gl_window: WindowedContext<PossiblyCurrent>,
-    gl: Arc<glow::Context>,
+    gl: Arc<egui_glow::painter::Context>,
     egui_glow: EguiGlow,
 }
 
@@ -98,7 +98,7 @@ impl TaoEguiWindow {
         };
 
         unsafe {
-            use glow::HasContext as _;
+            use egui_glow::glow::HasContext as _;
             self.gl.clear_color(0f32, 0f32, 0f32, 1.0);
             self.gl.clear(glow::COLOR_BUFFER_BIT);
         }
@@ -116,7 +116,7 @@ fn create_display(
     settings: WindowCreationSettings,
 ) -> (
     glutin::WindowedContext<glutin::PossiblyCurrent>,
-    glow::Context,
+    egui_glow::painter::Context,
 ) {
     let window_builder = glutin::window::WindowBuilder::new()
         .with_resizable(true)
@@ -138,7 +138,9 @@ fn create_display(
             .unwrap()
     };
 
-    let gl = unsafe { glow::Context::from_loader_function(|s| gl_window.get_proc_address(s)) };
+    let gl = unsafe {
+        egui_glow::painter::Context::from_loader_function(|s| gl_window.get_proc_address(s))
+    };
 
     (gl_window, gl)
 }

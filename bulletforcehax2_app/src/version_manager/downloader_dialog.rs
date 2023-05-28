@@ -3,8 +3,10 @@ use std::collections::HashMap;
 use anyhow::Result;
 use bulletforcehax2_lib::version_scraper::*;
 use bytesize::ByteSize;
-use eframe::App;
-use egui::{self, Color32, ProgressBar, RichText};
+use eframe::{
+    egui::{self, Color32, ProgressBar, RichText},
+    App,
+};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tracing::{debug, error, info};
 
@@ -67,7 +69,7 @@ impl DownloaderDialog {
 }
 
 impl App for DownloaderDialog {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
         // re-draw continuously to make sure the channel reader runs
         ctx.request_repaint();
 
