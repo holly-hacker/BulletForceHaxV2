@@ -1,21 +1,26 @@
 [package]
 name = "web"
-version = "0.0.0"
+version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 console_error_panic_hook = "0.1.7"
-futures = "0.3"
-gloo-net = { version = "0.2", default-features = false, features = ["websocket"] }
-gloo-timers = { version = "0.2", features = ["futures"] }
+egui = "0.22"
+eframe = { version = "0.22", default-features = false, features = [
+    "default_fonts", # Embed the default egui fonts.
+    "glow",          # Use the glow rendering backend. Alternative: "wgpu".
+    "persistence",   # Enable restoring app state when restarting the app.
+] }
 log = "0.4"
 postcard = { version = "1", features = ["alloc"] }
 shared = { path = "../bulletforcehax2_shared" }
-wasm-logger = "0.2"
-web-sys = { version = "0.3", features = ["Window", "Location"] }
-ybc = "0.4.0-beta.0"
-yew = { version = "0.20", features = ["csr"] }
-yew-router = "0.17"
-yewdux = "0.9.2"
+serde = { version = "1", features = ["derive"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+env_logger = "0.10"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-futures = "0.4"
+
