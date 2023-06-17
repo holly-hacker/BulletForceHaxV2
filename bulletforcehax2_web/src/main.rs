@@ -1,4 +1,5 @@
 mod app;
+mod hax_ipc;
 
 /// Native constructor so `cargo check` does not fail.
 #[cfg(not(target_arch = "wasm32"))]

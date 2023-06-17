@@ -1,26 +1,26 @@
-/// We derive Deserialize/Serialize so we can persist app state on shutdown.
-#[derive(Default, serde::Deserialize, serde::Serialize)]
-#[serde(default)] // if we add new fields, give them default values when deserializing old state
-pub struct BulletForceHaxApp {}
+use std::time::Duration;
+
+use crate::hax_ipc::HaxIpc;
+
+#[derive(Default)]
+pub struct BulletForceHaxApp {
+    ipc: Option<HaxIpc>,
+}
 
 impl BulletForceHaxApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        // Load previous app state (if any)
-        if let Some(storage) = cc.storage {
-            return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
+    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+        Self {
+            ipc: HaxIpc::try_connect(),
         }
-
-        Default::default()
     }
 }
 
 impl eframe::App for BulletForceHaxApp {
-    /// Called by the frame work to save state before shutdown.
-    fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage, eframe::APP_KEY, self);
-    }
-
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if let Some(ipc) = &mut self.ipc {
+            ipc.do_communication_tick();
+        }
+
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("BulletForceHax");
             if ui.link("Open game").clicked() {
@@ -31,7 +31,27 @@ impl eframe::App for BulletForceHaxApp {
                     });
                 });
             }
+
+            if let Some(ipc) = &mut self.ipc {
+                ui.label("IPC connected!");
+                if let Some(state) = &ipc.state {
+                    ui.spacing();
+                    ui.code(format!("{:#?}", state.0));
+                    ui.spacing();
+                    ui.code(format!("{:#?}", state.1));
+                } else {
+                    ui.label("No state found");
+                }
+            } else {
+                ui.label("IPC not connected");
+                if ui.button("Connect").clicked() {
+                    self.ipc = HaxIpc::try_connect();
+                }
+            }
+
             egui::warn_if_debug_build(ui);
         });
+
+        ctx.request_repaint_after(Duration::from_millis(50));
     }
 }
