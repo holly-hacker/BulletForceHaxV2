@@ -18,4 +18,5 @@ jobs:
       # We don't need front-end to be built for our tests but
       # build will fail if this directory is not present.
       - run: mkdir dist
+      - run: sudo apt install -y libwebkit2gtk-4.1-dev libgtk-3-dev libjavascriptcoregtk-4.1-dev libsoup-3.0-dev
       - run: cargo test --all-features
