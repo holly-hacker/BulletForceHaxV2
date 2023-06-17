@@ -57,7 +57,7 @@ function processWasmImports(imports) {
                 console.log('hooking _JS_WebRequest_Create');
                 let orig_webRequestCreate = imports.a[fn];
                 imports.a[fn] = function (url, method) {
-                    url = str_to_ptr(`${window.location.href}request?${ptr_to_str(url)}`);
+                    url = str_to_ptr(`${window.location.origin}/request?${ptr_to_str(url)}`);
                     let ret = orig_webRequestCreate(url, method);
                     console.log("_JS_WebRequest_Create", ptr_to_str(url), ptr_to_str(method), ret);
                     return ret;
@@ -84,9 +84,9 @@ WebAssembly.instantiateStreaming = function (source, importObject) {
 fetch('/config.json')
     .then((response) => response.json())
     .then(bfh_config => {
-        document.querySelector('#loader-js').addEventListener('load', function () {
-            load_game(bfh_config);
-        });
+        // document.querySelector('#loader-js').addEventListener('load', function () {
+        load_game(bfh_config);
+        // });
     })
 
 function load_game(bfh_config) {

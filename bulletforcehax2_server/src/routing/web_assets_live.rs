@@ -6,6 +6,7 @@ use axum::{
 };
 
 pub async fn serve(req: Request<Body>) -> Response<Body> {
+    // TODO: check for local file inclusion vulnerability
     let path = req.uri().path().trim_start_matches('/');
 
     let root = std::env!("CARGO_MANIFEST_DIR");

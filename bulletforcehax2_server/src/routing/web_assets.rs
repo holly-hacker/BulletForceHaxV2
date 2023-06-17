@@ -6,6 +6,7 @@ use axum::{
 static DIST_DIR: include_dir::Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/../dist");
 
 pub async fn serve(req: Request<Body>) -> Response<Body> {
+    // TODO: check for local file inclusion vulnerability
     let path = req.uri().path().trim_start_matches('/');
 
     let file = DIST_DIR.get_file(path);
