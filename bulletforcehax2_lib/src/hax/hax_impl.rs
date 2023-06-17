@@ -1,6 +1,5 @@
-use std::{ops::DerefMut, sync::Arc};
+use std::ops::DerefMut;
 
-use futures_util::lock::Mutex;
 use photon_lib::{
     highlevel::{
         constants::{event_code, operation_code, parameter_code, pun_event_code},
@@ -17,7 +16,7 @@ use photon_lib::{
 };
 use tracing::{debug, trace, warn};
 
-use super::VersionInfo;
+use super::{HaxSharedState, VersionInfo};
 use crate::{
     hax::{HaxState, PlayerActor},
     protocol::{player_script::PlayerScript, rpc::get_rpc_method_name},
@@ -37,7 +36,7 @@ enum WebSocketHookAction {
 impl HaxState {
     #[allow(clippy::ptr_arg)]
     pub fn webrequest_hook_onrequest(
-        _hax: Arc<Mutex<Self>>,
+        _hax: HaxSharedState,
         _url: &hyper::Uri,
         _bytes: &mut Vec<u8>,
     ) -> anyhow::Result<()> {
@@ -46,7 +45,7 @@ impl HaxState {
 
     #[allow(clippy::ptr_arg)]
     pub fn webrequest_hook_onresponse(
-        _hax: Arc<Mutex<Self>>,
+        _hax: HaxSharedState,
         _url: &hyper::Uri,
         _bytes: &mut Vec<u8>,
     ) -> anyhow::Result<()> {
@@ -55,7 +54,7 @@ impl HaxState {
 
     /// Runs logic on this websocket message and returns whether the given data should be forwarded on.
     pub fn websocket_hook(
-        hax: Arc<Mutex<Self>>,
+        hax: HaxSharedState,
         data: &mut Vec<u8>,
         server: WebSocketServer,
         direction: Direction,
@@ -109,7 +108,7 @@ impl HaxState {
     }
 
     fn match_packet_lobby(
-        hax: Arc<Mutex<Self>>,
+        hax: HaxSharedState,
         photon_message: PhotonMessage,
     ) -> anyhow::Result<WebSocketHookAction> {
         match photon_message {
@@ -207,7 +206,7 @@ impl HaxState {
     }
 
     fn match_packet_game(
-        hax: Arc<Mutex<Self>>,
+        hax: HaxSharedState,
         photon_message: PhotonMessage,
     ) -> anyhow::Result<WebSocketHookAction> {
         match photon_message {

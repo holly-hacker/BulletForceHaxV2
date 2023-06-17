@@ -1,17 +1,14 @@
-use std::sync::Arc;
-
-use bulletforcehax2_lib::hax::HaxState;
+use bulletforcehax2_lib::hax::HaxSharedState;
 use egui::{ProgressBar, RichText, TextEdit};
 use egui_extras::{Size, TableBuilder};
-use futures_util::lock::Mutex;
 
 pub struct BulletForceHaxMenu {
-    hax: Arc<Mutex<HaxState>>,
+    hax: HaxSharedState,
     first_frame: bool,
 }
 
 impl BulletForceHaxMenu {
-    pub fn new(hax: Arc<Mutex<HaxState>>) -> Self {
+    pub fn new(hax: HaxSharedState) -> Self {
         Self {
             hax,
             first_frame: true,

@@ -15,7 +15,7 @@ use tower_http::cors::CorsLayer;
 use tracing::{debug, error, info, info_span, trace, warn, Instrument};
 
 use super::{Direction, WebSocketServer};
-use crate::hax::HaxState;
+use crate::hax::{HaxSharedState, HaxState};
 
 type SocketStream =
     Box<dyn Stream<Item = tokio_tungstenite::tungstenite::Result<Message>> + Unpin + Send>;
@@ -69,7 +69,7 @@ impl WebSocketProxy {
 
 pub fn create_service(
     new_connection_sender: mpsc::Sender<WebSocketProxy>,
-    shared_state: Arc<Mutex<HaxState>>,
+    shared_state: HaxSharedState,
 ) -> BoxCloneService<Request<Body>, Response<Body>, Infallible> {
     let service = ServiceBuilder::new()
         .layer(CorsLayer::permissive())
@@ -83,7 +83,7 @@ pub fn create_service(
 #[tracing::instrument(name = "WebSocketProxy", level = "info", skip_all, fields(uri = req.uri().query().unwrap_or("")))]
 pub async fn web_socket_proxy_service(
     req: Request<Body>,
-    state: Arc<Mutex<HaxState>>,
+    state: HaxSharedState,
     new_connection_sender: mpsc::Sender<WebSocketProxy>,
 ) -> Result<Response<Body>, Infallible> {
     debug!("Incoming websocket request");
@@ -101,7 +101,7 @@ pub async fn web_socket_proxy_service(
 
 async fn web_socket_proxy(
     mut incoming_request: Request<Body>,
-    shared_state: Arc<Mutex<HaxState>>,
+    shared_state: HaxSharedState,
     new_connection_sender: mpsc::Sender<WebSocketProxy>,
 ) -> anyhow::Result<Response<Body>> {
     // Check if the request is a websocket upgrade request.
@@ -233,7 +233,7 @@ fn start_proxy_task(
     server_port: u16,
     direction: Direction,
     notify_closed: Arc<Notify>,
-    shared_state: Arc<Mutex<HaxState>>,
+    shared_state: HaxSharedState,
 ) -> tokio::task::JoinHandle<()> {
     let server = WebSocketServer::from_port(server_port);
     let span = match server {

@@ -6,7 +6,6 @@ This project contains/will contain the following crates:
 - `bulletforcehax2_app`: Runnable app. This spawns a webview with the game loaded and automatically runs BulletForceHaxV2 in the background.
 - `bulletforcehax2_ui`: egui-based UI code for controlling BulletForceHaxV2.
 - `bulletforcehax2_lib`: The core logic of BulletForceHaxV2.
-- `photon_bulletforce`: Conversion of photon types to bulletforce types.
 - `photon_lib`: Low-level implementation of the photon network protocol.
 - `tao_egui`: Utility crate to run an egui app alongside the webview in `bulletforcehax2_app`.
 

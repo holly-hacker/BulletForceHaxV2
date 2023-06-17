@@ -1,12 +1,11 @@
-use std::{convert::Infallible, sync::Arc};
+use std::convert::Infallible;
 
-use futures_util::lock::Mutex;
 use hyper::{Body, Request, Response};
 use tokio::sync::mpsc::Receiver;
 use tower::util::BoxCloneService;
 use tracing::{debug, info, warn};
 
-use super::{BulletForceHax, HaxState};
+use super::{BulletForceHax, HaxSharedState};
 use crate::{
     hax::{GameplayState, LobbyState},
     proxy::{websocket_proxy::WebSocketProxy, WebSocketServer},
@@ -34,7 +33,7 @@ impl BulletForceHax {
 
     // bookkeeping to ensure the websocket connection gets written and unwritten to the right variable
     async fn store_new_connections_in_state_vars(
-        state: Arc<Mutex<HaxState>>,
+        state: HaxSharedState,
         mut new_connection_recv: Receiver<WebSocketProxy>,
     ) {
         debug!("Received new websocket proxy to store in state variable");
