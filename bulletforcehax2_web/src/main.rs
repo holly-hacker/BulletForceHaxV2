@@ -1,5 +1,6 @@
 mod app;
 mod hax_ipc;
+mod ui;
 mod ui_context;
 
 /// Native constructor so `cargo check` does not fail.
