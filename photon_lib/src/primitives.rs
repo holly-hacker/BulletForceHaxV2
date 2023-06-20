@@ -1,6 +1,7 @@
 use ordered_float::OrderedFloat;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Vector2(pub OrderedFloat<f32>, pub OrderedFloat<f32>);
 
 impl Vector2 {
@@ -9,7 +10,7 @@ impl Vector2 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Vector3(
     pub OrderedFloat<f32>,
     pub OrderedFloat<f32>,
@@ -22,7 +23,7 @@ impl Vector3 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Quaternion(
     pub OrderedFloat<f32>,
     pub OrderedFloat<f32>,

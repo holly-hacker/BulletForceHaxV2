@@ -6,10 +6,8 @@ use serde::{Deserialize, Serialize};
 // NOTE: these values are copied to the `serde(rename)` attributes in PartialConfig
 const ARG_CONFIG_FILE: Opt<&str> = opt("config", "config.toml");
 const ARG_PORT: Opt<u16> = opt("port", 48897);
-const ARG_PROFILE_DIR: Opt<&str> = opt("browser-profile", "bfhax_data/browser_profile");
 const ARG_GAME_DIR: Opt<&str> = opt("game-files", "bfhax_data/game_files");
 const ARG_LOG_DIR: Opt<&str> = opt("logs", "bfhax_data/logs");
-const ARG_OPEN_DEVTOOLS: Opt<bool> = opt("open-devtools", false);
 const ARG_HAX: Opt<bool> = opt("hax", false);
 const ARG_HAX_HTTP: Opt<bool> = opt("no-hax-http", true);
 
@@ -17,10 +15,8 @@ const ARG_HAX_HTTP: Opt<bool> = opt("no-hax-http", true);
 pub struct Config {
     pub config_file: PathBuf,
     pub port: u16,
-    pub profile_dir: PathBuf,
     pub game_dir: PathBuf,
     pub log_dir: PathBuf,
-    pub open_devtools: bool,
     pub hax: bool,
     pub hax_http: bool,
 }
@@ -40,14 +36,10 @@ pub struct PartialConfig {
     pub config_file: Option<PathBuf>,
     #[serde(rename = "port")]
     pub port: Option<u16>,
-    #[serde(rename = "browser-profile")]
-    pub profile_dir: Option<PathBuf>,
     #[serde(rename = "game-files")]
     pub game_dir: Option<PathBuf>,
     #[serde(rename = "logs")]
     pub log_dir: Option<PathBuf>,
-    #[serde(rename = "open-devtools")]
-    pub open_devtools: Option<bool>,
     #[serde(rename = "hax")]
     pub hax: Option<bool>,
     #[serde(rename = "hax-http")]
@@ -59,10 +51,8 @@ impl Config {
         Self {
             config_file: new.config_file.unwrap_or(self.config_file),
             port: new.port.unwrap_or(self.port),
-            profile_dir: new.profile_dir.unwrap_or(self.profile_dir),
             game_dir: new.game_dir.unwrap_or(self.game_dir),
             log_dir: new.log_dir.unwrap_or(self.log_dir),
-            open_devtools: new.open_devtools.unwrap_or(self.open_devtools),
             hax: new.hax.unwrap_or(self.hax),
             hax_http: new.hax_http.unwrap_or(self.hax_http),
         }
@@ -74,10 +64,8 @@ impl Default for Config {
         Self {
             config_file: PathBuf::from(ARG_CONFIG_FILE.value),
             port: ARG_PORT.value,
-            profile_dir: PathBuf::from(ARG_PROFILE_DIR.value),
             game_dir: PathBuf::from(ARG_GAME_DIR.value),
             log_dir: PathBuf::from(ARG_LOG_DIR.value),
-            open_devtools: ARG_OPEN_DEVTOOLS.value,
             hax: ARG_HAX.value,
             hax_http: ARG_HAX_HTTP.value,
         }
@@ -89,17 +77,8 @@ impl From<ArgMatches> for PartialConfig {
         Self {
             config_file: matches.get_one::<PathBuf>(ARG_CONFIG_FILE.name).cloned(),
             port: matches.get_one::<u16>(ARG_PORT.name).cloned(),
-            profile_dir: matches.get_one::<PathBuf>(ARG_PROFILE_DIR.name).cloned(),
             game_dir: matches.get_one::<PathBuf>(ARG_GAME_DIR.name).cloned(),
             log_dir: matches.get_one::<PathBuf>(ARG_LOG_DIR.name).cloned(),
-            open_devtools: (matches.value_source(ARG_OPEN_DEVTOOLS.name)
-                == Some(ValueSource::CommandLine))
-            .then(|| {
-                matches
-                    .get_one::<bool>(ARG_OPEN_DEVTOOLS.name)
-                    .cloned()
-                    .unwrap()
-            }),
             hax: (matches.value_source(ARG_HAX.name) == Some(ValueSource::CommandLine))
                 .then(|| matches.get_one::<bool>(ARG_HAX.name).cloned().unwrap()),
             hax_http: (matches.value_source(ARG_HAX_HTTP.name) == Some(ValueSource::CommandLine))
@@ -137,7 +116,10 @@ fn build_command() -> Command {
             Arg::new(ARG_CONFIG_FILE.name)
                 .long(ARG_CONFIG_FILE.name)
                 .value_name("PATH")
-                .help(format!("Specifies which config file should be read. [default: {}]", ARG_CONFIG_FILE.value))
+                .help(format!(
+                    "Specifies which config file should be read. [default: {}]",
+                    ARG_CONFIG_FILE.value
+                ))
                 .required(false)
                 .value_parser(value_parser!(PathBuf)),
         )
@@ -145,7 +127,10 @@ fn build_command() -> Command {
             Arg::new(ARG_PORT.name)
                 .long(ARG_PORT.name)
                 .value_name("PORT")
-                .help(format!("Specifies the port to run the web server on. [default: {}]", ARG_PORT.value))
+                .help(format!(
+                    "Specifies the port to run the web server on. [default: {}]",
+                    ARG_PORT.value
+                ))
                 .required(false)
                 .value_parser(value_parser!(u16)),
         )
@@ -164,34 +149,25 @@ fn build_command() -> Command {
                 .action(ArgAction::SetFalse),
         )
         .arg(
-            Arg::new(ARG_PROFILE_DIR.name)
-                .long(ARG_PROFILE_DIR.name)
-                .value_name("PATH")
-                .help(format!("Sets the path where the browser profile for the webview gets stored. [default: {}]", ARG_PROFILE_DIR.value))
-                .required(false)
-                .value_parser(value_parser!(PathBuf)),
-        )
-        .arg(
             Arg::new(ARG_GAME_DIR.name)
                 .long(ARG_GAME_DIR.name)
                 .value_name("PATH")
-                .help(format!("Sets the path where downloaded game binaries get stored. [default: {}]", ARG_GAME_DIR.value))
+                .help(format!(
+                    "Sets the path where downloaded game binaries get stored. [default: {}]",
+                    ARG_GAME_DIR.value
+                ))
                 .required(false)
                 .value_parser(value_parser!(PathBuf)),
-            )
+        )
         .arg(
             Arg::new(ARG_LOG_DIR.name)
                 .long(ARG_LOG_DIR.name)
                 .value_name("PATH")
-                .help(format!("Sets the path where log files get stored. [default: {}]", ARG_LOG_DIR.value))
+                .help(format!(
+                    "Sets the path where log files get stored. [default: {}]",
+                    ARG_LOG_DIR.value
+                ))
                 .required(false)
                 .value_parser(value_parser!(PathBuf)),
-        )
-        .arg(
-            Arg::new(ARG_OPEN_DEVTOOLS.name)
-                .long(ARG_OPEN_DEVTOOLS.name)
-                .help("Automatically open the webview's devtools on start.")
-                .required(false)
-                .action(ArgAction::SetTrue),
         )
 }

@@ -1,5 +1,6 @@
 /target
 .idea/
+/dist
 
 # bfhax user data
 bfhax_data

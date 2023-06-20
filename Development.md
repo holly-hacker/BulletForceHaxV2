@@ -3,18 +3,19 @@
 # Project structure
 
 This project contains/will contain the following crates:
-- `bulletforcehax2_app`: Runnable app. This spawns a webview with the game loaded and automatically runs BulletForceHaxV2 in the background.
-- `bulletforcehax2_ui`: egui-based UI code for controlling BulletForceHaxV2.
+- `bulletforcehax2_server`: A binary project that starts the web server that hosts BulletForceHax.
+- `bulletforcehax2_web`: An egui-based UI to control BulletForceHax from the browser. This is hosted by the server.
+- `bulletforcehax2_shared`: Shared communication structures between the server and the web project.
 - `bulletforcehax2_lib`: The core logic of BulletForceHaxV2.
-- `photon_lib`: Low-level implementation of the photon network protocol.
-- `tao_egui`: Utility crate to run an egui app alongside the webview in `bulletforcehax2_app`.
+- `photon_lib`: Low-level implementation of the Photon network protocol.
 
 Dependency graph:
 ```mermaid
 flowchart TD
-    bulletforcehax2_app --> tao_egui & bulletforcehax2_ui & bulletforcehax2_lib
-    bulletforcehax2_ui --> bulletforcehax2_lib & photon_lib
-    bulletforcehax2_lib --> photon_lib
+    bulletforcehax2_server --> bulletforcehax2_shared & bulletforcehax2_lib
+    bulletforcehax2_web --> bulletforcehax2_shared
+    bulletforcehax2_lib --> bulletforcehax2_shared & photon_lib
+    bulletforcehax2_shared --> photon_lib
 ```
 
 # Getting a copy of Photon Unity Networking (PUN)

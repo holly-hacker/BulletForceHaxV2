@@ -18,3 +18,16 @@ check:
     cargo clippy --all-features
     cargo doc --all-features
     cargo nextest run --all-features --status-level fail
+
+build-frontend:
+    cd bulletforcehax2_web && trunk build
+
+watch-frontend:
+    cd bulletforcehax2_web && trunk watch
+
+run: build-frontend
+    cargo run -p server
+
+build-release:
+    cd bulletforcehax2_web && trunk build --release
+    cargo build -p server --profile release-publish
