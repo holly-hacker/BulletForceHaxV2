@@ -12,10 +12,10 @@ future.
 This is a successor of [BulletForceHax](https://github.com/HoLLy-HaCKeR/bulletforcehax).
 
 ## How does it work?
-`bulletforcehax2_app` will build an executable that runs a webserver and opens a webview that's pointed to it. This
-webserver hosts the game files and contains some javascript that will hook Unity's websocket and webrequest functions
-to modify all requests to go through that webserver. It will in turn forward it to the original destination and modify
-the in-transit packets where it's beneficial.
+`bulletforcehax2_server` will build an executable that runs a webserver which hosts hosts a copy of the game and a web
+UI. Alongside the game, some javascript is shipped  that will hook Unity's websocket and webrequest functions to modify
+all requests to go through the server. It will in turn forward it to the original destination and modify the in-transit
+packets where it's beneficial.
 
 For more info, see [Development.md](Development.md) and [Photon.md](Photon.md).
 
@@ -24,27 +24,11 @@ For more info, see [Development.md](Development.md) and [Photon.md](Photon.md).
 If hax is enabled, only a single client may be connected at once. This is because the hax state is tied to the lifetime
 of the proxy, so multiple simultaneous connections will cause the state to go mayham.
 
-## Compilation on linux
-You will need the required packages to build projects that use webview.
-
-On Ubuntu/Debian:
-```bash
-sudo apt install -y libwebkit2gtk-4.0-dev libgtk-3-dev
-```
-
-On Arch:
-```bash
-sudo pacman -S webkit2gtk
-```
-
-On Fedora:
-```bash
-sudo dnf install gtk3-devel webkit2gtk3-devel
-```
-
-Please note that wayland is currently not supported (see [tauri-egui#7](https://github.com/tauri-apps/tauri-egui/issues/7)).
-
 ## FAQ
+
+### I just get a black window with text, but nothing else happens!
+In your terminal you should see a link to http://localhost:48897. Click that link and you will see the web UI. This page
+contains another link to the game itself. You'll want to keep both windows open.
 
 ### The game launches but I see no cheats!
 By default, hax are disabled. Create a `config.toml` file that contains `hax = true` next to the exe.
