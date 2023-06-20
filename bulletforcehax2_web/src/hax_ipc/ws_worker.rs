@@ -73,6 +73,14 @@ impl WsComms {
 
         (messages, open_state)
     }
+
+    pub fn try_send(&self, messages: impl IntoIterator<Item = C2SMessage>) {
+        for message in messages {
+            self.send_to_worker
+                .unbounded_send(message)
+                .expect("unbounded send fail, channel closed?");
+        }
+    }
 }
 
 pub struct WsWorker {
