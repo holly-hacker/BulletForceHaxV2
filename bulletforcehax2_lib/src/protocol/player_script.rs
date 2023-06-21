@@ -119,11 +119,11 @@ impl PlayerScript {
                 _ => anyhow::bail!("Expected type Integer in PlayerScript position 18"),
             },
             position: match objects.get(19) {
-                Some(PhotonDataType::Custom(CustomData::Vector3(x))) => x.clone(),
+                Some(PhotonDataType::Custom(CustomData::Vector3(x))) => *x,
                 _ => anyhow::bail!("Expected type Vector3 in PlayerScript position 19"),
             },
             rotation: match objects.get(20) {
-                Some(PhotonDataType::Custom(CustomData::Quaternion(x))) => x.clone(),
+                Some(PhotonDataType::Custom(CustomData::Quaternion(x))) => *x,
                 _ => anyhow::bail!("Expected type Quaternion in PlayerScript position 20"),
             },
         })

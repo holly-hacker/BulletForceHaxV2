@@ -95,6 +95,6 @@ pub fn merge_player_script(actor: &mut PlayerActor, script: &PlayerScript) {
     );
 
     actor.health = Some(script.health as f32 / 100.0);
-    actor.position = Some(script.position.clone());
+    actor.position = Some(script.position);
     actor.facing_direction = Some(script.move_angle as f32 / 10.0);
 }

@@ -416,7 +416,7 @@ mod tests {
             },
         };
 
-        let photon_map = indexmap! {
+        let mut photon_map = indexmap! {
             PhotonDataType::String("switchingmap".into()) => PhotonDataType::Boolean(false),
             PhotonDataType::Byte(game_property_key::MAX_PLAYERS) => PhotonDataType::Byte(15),
             PhotonDataType::String("meanKD".into()) => PhotonDataType::Float(OrderedFloat(0.72795415)),
@@ -433,7 +433,7 @@ mod tests {
         }
 
         {
-            let serialized = RoomInfo::from_map(&mut photon_map.clone()).unwrap();
+            let serialized = RoomInfo::from_map(&mut photon_map).unwrap();
             assert_eq!(serialized, room_info);
         }
     }
