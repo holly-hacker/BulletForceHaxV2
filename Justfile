@@ -3,6 +3,10 @@
 default:
     @just --list
 
+install-deps:
+    rustup target add wasm32-unknown-unknown
+    cargo install trunk --locked
+
 cover-photon $RUSTFLAGS='-Cinstrument-coverage' $CARGO_INCREMENTAL='0' $LLVM_PROFILE_FILE='cargo-test-%p-%m.profraw': && clear-coverage
     rm -r -f target/coverage/html
     rm -r -f lcov.info
