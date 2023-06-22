@@ -77,6 +77,6 @@ async fn write(mut sender: SplitSink<WebSocket, Message>, hax_state: HaxSharedSt
             .send(Message::Binary(state_bytes))
             .await
             .expect("send item over websocket");
-        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
     }
 }
