@@ -1,3 +1,6 @@
+> [!WARNING]
+> You do not want to use this (yet). While the underlying networking library is solid, the GUI interface is very bare-bones and doesn't offer any useful features. I may implement some more useful features in the future, but UI development is boring and motivation is low.
+
 # BulletForceHaxV2
 
 [![Build history](https://buildstats.info/github/chart/holly-hacker/bulletforcehaxv2/?branch=main)](https://github.com/HoLLy-HaCKeR/BulletForceHaxV2/actions)
