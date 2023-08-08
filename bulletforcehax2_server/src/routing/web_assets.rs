@@ -3,7 +3,7 @@ use axum::{
     http::{header, Request, Response, StatusCode},
 };
 
-static DIST_DIR: include_dir::Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/../dist");
+static DIST_DIR: include_dir::Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/assets");
 
 pub async fn serve(req: Request<Body>) -> Response<Body> {
     // TODO: check for local file inclusion vulnerability
